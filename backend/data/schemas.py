@@ -87,3 +87,19 @@ class GoalResponse(BaseModel):
     price_max: Optional[int] = None
     achieved: bool
     class Config: from_attributes = True
+
+# --- Auth Schemas ---
+class LoginRequest(BaseModel):
+    password: str
+    device_name: str
+
+class LoginResponse(BaseModel):
+    token: str
+
+class AuthSessionResponse(BaseModel):
+    id: int
+    device_name: str
+    ip_address: Optional[str] = None
+    created_at: datetime
+    last_active: datetime
+    class Config: from_attributes = True

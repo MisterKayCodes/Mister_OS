@@ -1,8 +1,7 @@
-// Rule: Max 200 lines per file — split if exceeded
 import React from 'react';
-import { Edit2, DollarSign, Bot, CheckSquare, Trash2, Square, ChevronLeft } from 'lucide-react';
+import { Edit2, DollarSign, Bot, CheckSquare, Trash2, Square, ChevronLeft, Shield } from 'lucide-react';
 
-export default function Sidebar({ notes, activeNoteId, onSelectNote, onCreateNote, onViewExpenses, onOpenOmniBrain, onDeleteNotes, onBack, showBack }) {
+export default function Sidebar({ notes, activeNoteId, onSelectNote, onCreateNote, onViewExpenses, onOpenOmniBrain, onOpenSecurity, onDeleteNotes, onBack, showBack }) {
   const [selectMode, setSelectMode] = React.useState(false);
   const [selected, setSelected] = React.useState([]);
 
@@ -30,6 +29,9 @@ export default function Sidebar({ notes, activeNoteId, onSelectNote, onCreateNot
           <h1 className="font-semibold text-lg text-gray-700">Mister OS</h1>
         )}
         <div className="flex gap-2">
+          <button onClick={onOpenSecurity} className="text-gray-500 hover:text-red-600 transition p-1 rounded hover:bg-red-50" title="Security & Devices">
+            <Shield size={18} />
+          </button>
           <button onClick={onOpenOmniBrain} className="text-purple-600 hover:bg-purple-100 transition p-1 rounded" title="Omni-Brain">
             <Bot size={18} />
           </button>

@@ -7,6 +7,7 @@ import Editor from '../../components/features/Editor';
 import ChatAnalyzer from '../../components/features/ChatAnalyzer';
 import FinanceApp from '../../pages/Finance';
 import OmniChat from '../../components/features/OmniChat';
+import SecurityModal from '../../components/features/SecurityModal';
 import { fetchNotesApi, createNoteApi, saveNoteApi, analyzeChatApi, deleteNotesApi } from '../../utils/api';
 import { useToast } from '../../context/ToastContext';
 
@@ -20,6 +21,7 @@ export default function Home() {
   const [title, setTitle] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState(null);
+  const [showSecurity, setShowSecurity] = useState(false);
   const { showToast } = useToast();
 
   useEffect(() => { if (isAuthenticated) fetchNotes(); }, [isAuthenticated]);
@@ -124,6 +126,7 @@ export default function Home() {
           onCreateNote={createNote}
           onViewExpenses={viewFinance}
           onOpenOmniBrain={() => { setViewMode('omnichat'); setActiveNote(null); }}
+          onOpenSecurity={() => setShowSecurity(true)}
           onDeleteNotes={handleDeleteNotes}
         />
       </div>
@@ -161,6 +164,8 @@ export default function Home() {
       <div className="md:hidden">
         <ChatAnalyzer result={analysisResult} onClose={() => setAnalysisResult(null)} />
       </div>
+
+      {showSecurity && <SecurityModal token={token} onClose={() => setShowSecurity(false)} />}
     </div>
   );
 }
