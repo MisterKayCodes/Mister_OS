@@ -46,3 +46,16 @@ export const analyzeChatApi = async (content, token) => {
   const data = await res.json();
   return data.analysis;
 };
+
+export const sendOmniChatApi = async (message, sessionId, token) => {
+  const res = await fetch(`${AI_BASE}/omni-chat`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Master-Token": token },
+    body: JSON.stringify({ message, session_id: sessionId })
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.detail || "Omni-Chat request failed");
+  }
+  return await res.json();
+};

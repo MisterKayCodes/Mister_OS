@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
 import re
-from data import models, schemas, database
+from data import models, schemas, database, vector
 from api.dependencies import get_master_token
 
 router = APIRouter(prefix="/api/notes", tags=["Notes"])
@@ -43,6 +43,9 @@ def create_note(note: schemas.NoteCreate, db: Session = Depends(database.get_db)
     # Parse expenses
     parse_and_save_expenses(note.content, db_note.id, db)
     
+    # Store in Vector DB for Omni-Brain
+    vector.upsert_note_vectors(db_note.id, db_note.title, db_note.content)
+    
     return db_note
 
 @router.get("/", response_model=List[schemas.NoteResponse])
@@ -72,6 +75,9 @@ def update_note(note_id: int, note_update: schemas.NoteUpdate, db: Session = Dep
     
     # Parse expenses on update
     parse_and_save_expenses(note_update.content, db_note.id, db)
+    
+    # Update in Vector DB for Omni-Brain
+    vector.upsert_note_vectors(db_note.id, db_note.title, db_note.content)
     
     return db_note
 

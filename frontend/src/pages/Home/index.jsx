@@ -6,6 +6,7 @@ import AuthScreen from '../../components/layout/AuthScreen';
 import Editor from '../../components/features/Editor';
 import ChatAnalyzer from '../../components/features/ChatAnalyzer';
 import ExpensesModal from '../../components/features/ExpensesModal';
+import OmniChat from '../../components/features/OmniChat';
 import { fetchNotesApi, createNoteApi, saveNoteApi, fetchExpensesApi, analyzeChatApi } from '../../utils/api';
 import { useToast } from '../../context/ToastContext';
 
@@ -14,6 +15,7 @@ export default function Home() {
   const [isAuthenticated, setIsAuthenticated] = useState(!!token);
   const [notes, setNotes] = useState([]);
   const [activeNote, setActiveNote] = useState(null);
+  const [viewMode, setViewMode] = useState('editor'); // 'editor' or 'omnichat'
   const [content, setContent] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState(null);
@@ -63,6 +65,7 @@ export default function Home() {
     setActiveNote(note);
     setContent(note.content);
     setAnalysisResult(null);
+    setViewMode('editor');
   };
 
   useEffect(() => {
@@ -104,18 +107,21 @@ export default function Home() {
 
   return (
     <div className="flex h-screen overflow-hidden text-gray-800 bg-[#f9f9f9] relative">
-      <div className={`w-full md:w-72 shrink-0 ${activeNote ? 'hidden md:flex' : 'flex'} flex-col h-full`}>
+      <div className={`w-full md:w-72 shrink-0 ${activeNote || viewMode === 'omnichat' ? 'hidden md:flex' : 'flex'} flex-col h-full`}>
         <Sidebar 
           notes={notes} 
           activeNoteId={activeNote?.id} 
           onSelectNote={selectNote} 
           onCreateNote={createNote} 
           onViewExpenses={viewExpenses} 
+          onOpenOmniBrain={() => { setViewMode('omnichat'); setActiveNote(null); }}
         />
       </div>
 
-      <div className={`flex-1 flex bg-white relative overflow-hidden ${!activeNote ? 'hidden md:flex' : 'flex'}`}>
-        {activeNote ? (
+      <div className={`flex-1 flex bg-white relative overflow-hidden ${!activeNote && viewMode !== 'omnichat' ? 'hidden md:flex' : 'flex'}`}>
+        {viewMode === 'omnichat' ? (
+          <OmniChat token={token} />
+        ) : activeNote ? (
           <>
             <Editor 
               content={content} 

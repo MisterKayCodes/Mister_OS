@@ -1,13 +1,16 @@
 // Rule: Max 200 lines per file — split if exceeded
 import React from 'react';
-import { Edit2, DollarSign } from 'lucide-react';
+import { Edit2, DollarSign, Bot } from 'lucide-react';
 
-export default function Sidebar({ notes, activeNoteId, onSelectNote, onCreateNote, onViewExpenses }) {
+export default function Sidebar({ notes, activeNoteId, onSelectNote, onCreateNote, onViewExpenses, onOpenOmniBrain }) {
   return (
     <div className="w-full bg-[#f3f3f3] md:border-r border-[#e0e0e0] flex flex-col h-full">
       <div className="p-4 flex justify-between items-center border-b border-[#e0e0e0]">
         <h1 className="font-semibold text-lg text-gray-700">Mister OS</h1>
         <div className="flex gap-2">
+          <button onClick={onOpenOmniBrain} className="text-purple-600 hover:bg-purple-100 transition p-1 rounded" title="Omni-Brain">
+            <Bot size={18} />
+          </button>
           <button onClick={onViewExpenses} className="text-gray-500 hover:text-black transition p-1 rounded hover:bg-gray-200" title="View Expenses">
             <DollarSign size={18} />
           </button>
