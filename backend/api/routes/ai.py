@@ -197,8 +197,12 @@ Only output these commands if the user is explicitly making a purchase or statin
                 parse_finance_commands(note.content, note.id, db)
                 ai_reply = re.sub(r"\[LOG_EXPENSE:.*?\]\n?", "", ai_reply)
             
+            ai_reply = ai_reply.strip()
+            if not ai_reply:
+                ai_reply = "Done! I've logged that for you."
+            
             # Save Assistant Message
-            db_ai_msg = models.ChatMessage(session_id=session_id, role="assistant", content=ai_reply.strip())
+            db_ai_msg = models.ChatMessage(session_id=session_id, role="assistant", content=ai_reply)
             db.add(db_ai_msg)
             db.commit()
             db.refresh(db_ai_msg)
