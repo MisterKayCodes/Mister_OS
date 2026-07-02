@@ -13,33 +13,69 @@ router = APIRouter(prefix="/api/notes", tags=["Notes"])
 
 import httpx
 
+import datetime
+
+def parse_date_tag(date_str: str) -> datetime.datetime:
+    date_str = date_str.lower().strip()
+    now = datetime.datetime.now()
+    if date_str == "today":
+        return now
+    elif date_str == "yesterday":
+        return now - datetime.timedelta(days=1)
+    
+    days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+    if date_str in days:
+        target_day = days.index(date_str)
+        current_day = now.weekday()
+        diff = current_day - target_day
+        if diff <= 0:
+            diff += 7
+        return now - datetime.timedelta(days=diff)
+        
+    try:
+        return datetime.datetime.strptime(date_str, "%Y-%m-%d")
+    except ValueError:
+        return now
+
 def parse_finance_commands(content: str, note_id: int, db: Session):
-    # Clear old transactions for this note to prevent duplicates
+    # Fetch existing transactions to preserve their dates if they haven't changed
+    existing_txs = db.query(models.Transaction).filter(models.Transaction.note_id == note_id).all()
+    existing_pool = list(existing_txs)
+    
+    # Delete old transactions, we will recreate them
     db.query(models.Transaction).filter(models.Transaction.note_id == note_id).delete()
     
-    # Patterns
-    # /spend [amount] [desc] #[tag]
-    # /income [amount] [desc] #[tag]
-    pattern = r"^\s*/(spend|income|save|owe|paid-back)\s+(\$?)(\d+(?:\.\d+)?)\s+(.+?)(?:\s+#(\w+))?\s*$"
-    
+    prefix_pattern = r"^\s*/(spend|income|save|owe|paid-back)\s+(\$?)(\d+(?:\.\d+)?)\s+(.*)$"
     usd_rate = None
     
     for line in content.split('\n'):
-        match = re.match(pattern, line, re.IGNORECASE)
+        match = re.match(prefix_pattern, line, re.IGNORECASE)
         if match:
             cmd = match.group(1).lower()
             is_usd = match.group(2) == '$'
             amount = float(match.group(3))
-            desc = match.group(4).strip()
-            tag = match.group(5).lower() if match.group(5) else "uncategorized"
+            rest_of_line = match.group(4).strip()
             
-            # Map command to type
+            tag = "uncategorized"
+            date_tag = None
+            desc = rest_of_line
+            
+            # Extract #tag and @date from the end of the line in any order
+            while True:
+                end_match = re.search(r"\s+(?:#(\w+)|@([\w-]+))$", desc)
+                if not end_match:
+                    break
+                if end_match.group(1):
+                    tag = end_match.group(1).lower()
+                elif end_match.group(2):
+                    date_tag = end_match.group(2).lower()
+                desc = desc[:end_match.start()].strip()
+            
             tx_type = "expense"
             if cmd == "income": tx_type = "income"
             elif cmd == "save": tx_type = "save"
-            elif cmd in ["owe", "paid-back"]: continue # Handled separately later if needed
+            elif cmd in ["owe", "paid-back"]: continue
             
-            # USD Conversion
             rate = 1.0
             naira_amt = int(amount)
             if is_usd:
@@ -48,9 +84,23 @@ def parse_finance_commands(content: str, note_id: int, db: Session):
                         res = httpx.get("https://open.er-api.com/v6/latest/USD", timeout=5.0)
                         usd_rate = res.json().get("rates", {}).get("NGN", 1500.0)
                     except Exception:
-                        usd_rate = 1500.0 # Fallback
+                        usd_rate = 1500.0
                 rate = usd_rate
                 naira_amt = int(amount * rate)
+                
+            tx_date = datetime.datetime.now()
+            if date_tag:
+                tx_date = parse_date_tag(date_tag)
+            else:
+                # Try to find a matching existing transaction to preserve its date
+                match_idx = -1
+                for i, ex_tx in enumerate(existing_pool):
+                    if ex_tx.type == tx_type and ex_tx.amount_naira == naira_amt and ex_tx.description == desc and ex_tx.category == tag:
+                        match_idx = i
+                        break
+                if match_idx >= 0:
+                    matched_tx = existing_pool.pop(match_idx)
+                    tx_date = matched_tx.date
                 
             db_tx = models.Transaction(
                 type=tx_type,
@@ -60,6 +110,7 @@ def parse_finance_commands(content: str, note_id: int, db: Session):
                 exchange_rate=rate,
                 description=desc,
                 category=tag,
+                date=tx_date,
                 note_id=note_id
             )
             db.add(db_tx)

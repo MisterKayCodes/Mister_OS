@@ -1,119 +1,125 @@
 // Rule: Max 200 lines per file — split if exceeded
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ArrowUpRight, ArrowDownRight, Wallet, Target } from 'lucide-react';
-import { getFinanceOverview, getTransactions } from '../../utils/financeApi';
+import { ChevronLeft, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { getFinanceOverview, getTransactions, getWallets, getGoals } from '../../utils/financeApi';
 import TransactionsTab from './TransactionsTab';
+import WalletsTab from './WalletsTab';
+import GoalsTab from './GoalsTab';
+import InsightsTab from './InsightsTab';
 import { useToast } from '../../context/ToastContext';
+
+const TABS = ['overview', 'transactions', 'wallets', 'goals', 'insights'];
 
 export default function FinanceApp({ token, onBack }) {
   const [activeTab, setActiveTab] = useState('overview');
   const [overview, setOverview] = useState(null);
   const [transactions, setTransactions] = useState([]);
+  const [wallets, setWallets] = useState([]);
+  const [goals, setGoals] = useState([]);
   const [loading, setLoading] = useState(true);
   const { showToast } = useToast();
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  useEffect(() => { fetchAll(); }, []);
 
-  const fetchData = async () => {
+  const fetchAll = async () => {
     setLoading(true);
     try {
-      const [ovData, txData] = await Promise.all([
+      const [ov, txs, ws, gs] = await Promise.all([
         getFinanceOverview(token),
-        getTransactions(token)
+        getTransactions(token),
+        getWallets(token),
+        getGoals(token)
       ]);
-      setOverview(ovData);
-      setTransactions(txData);
+      setOverview(ov);
+      setTransactions(txs);
+      setWallets(ws);
+      setGoals(gs);
     } catch (err) {
-      showToast("Error loading finance data: " + err.message, "error");
+      showToast('Error loading finance data: ' + err.message, 'error');
     } finally {
       setLoading(false);
     }
   };
 
-  const formatNGN = (amount) => {
-    return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(amount);
-  };
+  const formatNGN = (amount) =>
+    new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', maximumFractionDigits: 0 }).format(amount || 0);
 
   return (
     <div className="flex-1 flex flex-col h-full bg-[#f9f9f9]">
       {/* Header */}
       <div className="h-14 bg-white border-b border-gray-200 flex items-center px-4 md:px-6 shrink-0 gap-3">
-        <button onClick={onBack} className="text-gray-500 hover:text-black">
-          <ChevronLeft size={22} />
-        </button>
+        <button onClick={onBack} className="text-gray-500 hover:text-black"><ChevronLeft size={22} /></button>
         <h2 className="font-semibold text-gray-800 text-lg">Mister Finance</h2>
       </div>
 
       {/* Tabs Nav */}
-      <div className="bg-white px-4 md:px-6 border-b border-gray-200 flex gap-6 overflow-x-auto">
-        {['overview', 'transactions', 'wallets', 'goals', 'insights'].map(tab => (
+      <div className="bg-white px-4 md:px-6 border-b border-gray-200 flex gap-5 overflow-x-auto shrink-0">
+        {TABS.map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`py-3 text-sm font-medium border-b-2 transition whitespace-nowrap ${
+            className={`py-3 text-sm font-medium border-b-2 transition whitespace-nowrap capitalize ${
               activeTab === tab ? 'border-purple-600 text-purple-700' : 'border-transparent text-gray-500 hover:text-gray-800'
             }`}
           >
-            {tab.charAt(0).toUpperCase() + tab.slice(1)}
+            {tab}
           </button>
         ))}
       </div>
 
-      {/* Content Area */}
+      {/* Content */}
       <div className="flex-1 overflow-y-auto p-4 md:p-6">
         {loading ? (
-          <div className="text-gray-400 text-sm">Loading financial data...</div>
+          <div className="text-gray-400 text-sm text-center pt-10">Loading your finances...</div>
         ) : (
           <>
             {activeTab === 'overview' && overview && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
-                  <p className="text-gray-500 text-sm font-medium mb-1">Net Worth</p>
-                  <h3 className="text-3xl font-bold text-gray-900">{formatNGN(overview.net_worth)}</h3>
+                {/* Net Worth card */}
+                <div className="bg-gradient-to-br from-purple-600 to-indigo-700 text-white p-6 rounded-2xl shadow-sm md:col-span-2">
+                  <p className="text-purple-200 text-sm font-medium mb-1">Total Net Worth</p>
+                  <h3 className="text-4xl font-extrabold tracking-tight">{formatNGN(overview.net_worth)}</h3>
+                  <p className="text-purple-300 text-xs mt-2">{wallets.length} wallet{wallets.length !== 1 ? 's' : ''} tracked</p>
                 </div>
-                <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm flex flex-col justify-center">
-                  <div className="flex items-center justify-between mb-3">
-                    <p className="text-sm font-medium text-gray-500">This Month</p>
-                    <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-medium">
-                      {overview.savings_rate}% Saved
+                {/* Income */}
+                <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center text-green-600 shrink-0"><ArrowDownRight size={22} /></div>
+                  <div>
+                    <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">Month Income</p>
+                    <p className="text-xl font-bold text-green-600">{formatNGN(overview.month_income)}</p>
+                  </div>
+                </div>
+                {/* Expenses */}
+                <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center text-red-600 shrink-0"><ArrowUpRight size={22} /></div>
+                  <div>
+                    <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">Month Expenses</p>
+                    <p className="text-xl font-bold text-red-600">{formatNGN(overview.month_expenses)}</p>
+                  </div>
+                </div>
+                {/* Savings Rate */}
+                <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm md:col-span-2">
+                  <div className="flex justify-between items-center mb-2">
+                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Savings Rate</p>
+                    <span className={`text-sm font-bold ${overview.savings_rate >= 20 ? 'text-green-600' : overview.savings_rate >= 10 ? 'text-amber-500' : 'text-red-500'}`}>
+                      {overview.savings_rate}%
                     </span>
                   </div>
-                  <div className="flex gap-4">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-600">
-                        <ArrowDownRight size={16} />
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500">In</p>
-                        <p className="font-semibold text-sm">{formatNGN(overview.month_income)}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center text-red-600">
-                        <ArrowUpRight size={16} />
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500">Out</p>
-                        <p className="font-semibold text-sm">{formatNGN(overview.month_expenses)}</p>
-                      </div>
-                    </div>
+                  <div className="w-full bg-gray-100 rounded-full h-2.5">
+                    <div
+                      className={`h-2.5 rounded-full transition-all ${overview.savings_rate >= 20 ? 'bg-green-500' : overview.savings_rate >= 10 ? 'bg-amber-400' : 'bg-red-500'}`}
+                      style={{ width: `${Math.min(overview.savings_rate, 100)}%` }}
+                    />
                   </div>
+                  <p className="text-xs text-gray-400 mt-1">{formatNGN(overview.month_saved)} saved this month</p>
                 </div>
               </div>
             )}
 
-            {activeTab === 'transactions' && (
-              <TransactionsTab transactions={transactions} formatNGN={formatNGN} />
-            )}
-            
-            {['wallets', 'goals', 'insights'].includes(activeTab) && (
-              <div className="bg-white p-8 rounded-2xl border border-gray-200 text-center text-gray-500">
-                <Wallet size={32} className="mx-auto mb-3 opacity-30" />
-                <p>The {activeTab} tab is under construction.</p>
-              </div>
-            )}
+            {activeTab === 'transactions' && <TransactionsTab transactions={transactions} formatNGN={formatNGN} />}
+            {activeTab === 'wallets' && <WalletsTab wallets={wallets} setWallets={setWallets} formatNGN={formatNGN} token={token} />}
+            {activeTab === 'goals' && <GoalsTab goals={goals} setGoals={setGoals} wallets={wallets} formatNGN={formatNGN} token={token} />}
+            {activeTab === 'insights' && <InsightsTab token={token} />}
           </>
         )}
       </div>

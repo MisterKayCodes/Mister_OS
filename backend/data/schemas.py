@@ -85,8 +85,32 @@ class GoalResponse(BaseModel):
     name: str
     price_min: int
     price_max: Optional[int] = None
+    wallet_id: Optional[int] = None
     achieved: bool
     class Config: from_attributes = True
+
+class DebtResponse(BaseModel):
+    id: int
+    direction: str
+    person: str
+    amount: int
+    description: str
+    settled: bool
+    date: datetime
+    class Config: from_attributes = True
+
+# --- Finance AI Schemas ---
+class FinanceInsightsRequest(BaseModel):
+    pass  # No input needed; backend fetches data itself
+
+class FinanceInsightsResponse(BaseModel):
+    insights: str
+
+class CanIAffordRequest(BaseModel):
+    query: str
+
+class CanIAffordResponse(BaseModel):
+    answer: str
 
 # --- Auth Schemas ---
 class LoginRequest(BaseModel):

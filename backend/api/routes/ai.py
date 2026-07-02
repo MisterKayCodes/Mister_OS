@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 import os
 import httpx
+from datetime import datetime
 from api.dependencies import get_master_token
 from data import database, models, schemas, vector
 
@@ -156,3 +157,69 @@ async def omni_chat(request: schemas.OmniChatRequest, db: Session = Depends(data
             print(f"Exception in Omni-Chat: {str(e)}")
             raise HTTPException(status_code=500, detail=str(e))
 
+@router.post("/finance-insights", response_model=schemas.FinanceInsightsResponse)
+async def finance_insights(db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
+    GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+    if not GROQ_API_KEY:
+        raise HTTPException(status_code=500, detail="GROQ_API_KEY not configured.")
+
+    # Pull last 30 days of transactions
+    from datetime import timedelta
+    since = datetime.now() - timedelta(days=30)
+    txs = db.query(models.Transaction).filter(models.Transaction.date >= since).all()
+    tx_summary = "\n".join([f"- {t.type.upper()} ₦{t.amount_naira:,} | {t.description} #{t.category} on {t.date.strftime('%b %d')}" for t in txs]) or "No transactions in the last 30 days."
+
+    wallets = db.query(models.Wallet).all()
+    wallet_summary = "\n".join([f"- {w.name} ({w.type}): ₦{w.balance:,}" for w in wallets]) or "No wallets set up."
+
+    prompt = f"""You are Mister, a personal finance advisor. Analyze the user's last 30 days of finances below.
+Give 3-5 specific, actionable insights. Be direct, honest, and concise. Format with markdown.
+
+WALLETS:
+{wallet_summary}
+
+TRANSACTIONS:
+{tx_summary}"""
+
+    headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
+    payload = {"model": "llama-3.1-8b-instant", "messages": [{"role": "user", "content": prompt}], "temperature": 0.5, "max_tokens": 1024}
+    async with httpx.AsyncClient() as client:
+        try:
+            res = await client.post(GROQ_API_URL, headers=headers, json=payload, timeout=30.0)
+            res.raise_for_status()
+            return schemas.FinanceInsightsResponse(insights=res.json()["choices"][0]["message"]["content"])
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/can-i-afford", response_model=schemas.CanIAffordResponse)
+async def can_i_afford(request: schemas.CanIAffordRequest, db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
+    GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+    if not GROQ_API_KEY:
+        raise HTTPException(status_code=500, detail="GROQ_API_KEY not configured.")
+
+    wallets = db.query(models.Wallet).all()
+    wallet_summary = "\n".join([f"- {w.name} ({w.type}): ₦{w.balance:,}" for w in wallets]) or "No wallets."
+    goals = db.query(models.Goal).filter(models.Goal.achieved == False).all()
+    goal_summary = "\n".join([f"- {g.name}: ₦{g.price_min:,}–₦{g.price_max or g.price_min:,}" for g in goals]) or "No active goals."
+
+    prompt = f"""You are Mister, a blunt personal finance advisor.
+The user asks: "{request.query}"
+
+Here is their current financial state:
+WALLETS:
+{wallet_summary}
+
+ACTIVE GOALS (things they're saving for):
+{goal_summary}
+
+Give an honest, direct answer in 2-4 sentences. Consider their goals and liquidity."""
+
+    headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
+    payload = {"model": "llama-3.1-8b-instant", "messages": [{"role": "user", "content": prompt}], "temperature": 0.4, "max_tokens": 512}
+    async with httpx.AsyncClient() as client:
+        try:
+            res = await client.post(GROQ_API_URL, headers=headers, json=payload, timeout=30.0)
+            res.raise_for_status()
+            return schemas.CanIAffordResponse(answer=res.json()["choices"][0]["message"]["content"])
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
