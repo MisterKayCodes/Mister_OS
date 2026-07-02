@@ -127,3 +127,36 @@ class AuthSessionResponse(BaseModel):
     created_at: datetime
     last_active: datetime
     class Config: from_attributes = True
+
+# --- Price DB Schemas ---
+class VendorBase(BaseModel):
+    name: str
+
+class VendorResponse(VendorBase):
+    id: int
+    class Config: from_attributes = True
+
+class ProductBase(BaseModel):
+    name: str
+    category: Optional[str] = "uncategorized"
+
+class ProductResponse(ProductBase):
+    id: int
+    class Config: from_attributes = True
+
+class PriceLogCreate(BaseModel):
+    product_id: int
+    vendor_id: int
+    price: int
+
+class PriceLogResponse(PriceLogCreate):
+    id: int
+    date: datetime
+    class Config: from_attributes = True
+
+class PriceDbItem(BaseModel):
+    product: ProductResponse
+    latest_price: int
+    latest_vendor: VendorResponse
+    previous_price: Optional[int] = None
+    price_changed_date: Optional[datetime] = None

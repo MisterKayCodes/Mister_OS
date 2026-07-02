@@ -115,3 +115,39 @@ export const canIAffordApi = async (query, token) => {
   if (!res.ok) throw new Error("Failed to get affordability check");
   return await res.json();
 };
+
+export const getPriceDbApi = async (token) => {
+  const res = await fetch(`${API_BASE}/price-db`, { headers: { "X-Master-Token": token } });
+  if (!res.ok) throw new Error("Failed to fetch price DB");
+  return await res.json();
+};
+
+export const createVendorApi = async (vendor, token) => {
+  const res = await fetch(`${API_BASE}/vendors`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Master-Token": token },
+    body: JSON.stringify(vendor)
+  });
+  if (!res.ok) throw new Error("Failed to create vendor");
+  return await res.json();
+};
+
+export const createProductApi = async (product, token) => {
+  const res = await fetch(`${API_BASE}/products`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Master-Token": token },
+    body: JSON.stringify(product)
+  });
+  if (!res.ok) throw new Error("Failed to create product");
+  return await res.json();
+};
+
+export const createPriceLogApi = async (priceLog, token) => {
+  const res = await fetch(`${API_BASE}/price-logs`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Master-Token": token },
+    body: JSON.stringify(priceLog)
+  });
+  if (!res.ok) throw new Error("Failed to log price");
+  return await res.json();
+};

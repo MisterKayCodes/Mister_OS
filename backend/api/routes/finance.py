@@ -135,3 +135,65 @@ def settle_debt(debt_id: int, db: Session = Depends(database.get_db), token: str
     d.settled = True
     db.commit()
     return {"message": "Debt settled"}
+
+# --- Price DB ---
+@router.get("/price-db", response_model=List[schemas.PriceDbItem])
+def get_price_db(db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
+    products = db.query(models.Product).all()
+    results = []
+    for p in products:
+        logs = db.query(models.PriceLog).filter(models.PriceLog.product_id == p.id).order_by(models.PriceLog.date.desc()).all()
+        if not logs:
+            continue
+        
+        latest_log = logs[0]
+        latest_vendor = db.query(models.Vendor).filter(models.Vendor.id == latest_log.vendor_id).first()
+        
+        prev_price = None
+        price_changed_date = None
+        for log in logs[1:]:
+            if log.price != latest_log.price:
+                prev_price = log.price
+                price_changed_date = latest_log.date
+                break
+                
+        results.append(schemas.PriceDbItem(
+            product=p,
+            latest_price=latest_log.price,
+            latest_vendor=latest_vendor,
+            previous_price=prev_price,
+            price_changed_date=price_changed_date
+        ))
+    return results
+
+@router.post("/vendors", response_model=schemas.VendorResponse)
+def create_vendor(req: schemas.VendorBase, db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
+    v = db.query(models.Vendor).filter(models.Vendor.name.ilike(req.name)).first()
+    if v: return v
+    v = models.Vendor(name=req.name)
+    db.add(v)
+    db.commit()
+    db.refresh(v)
+    return v
+
+@router.get("/vendors", response_model=List[schemas.VendorResponse])
+def get_vendors(db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
+    return db.query(models.Vendor).all()
+
+@router.post("/products", response_model=schemas.ProductResponse)
+def create_product(req: schemas.ProductBase, db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
+    p = db.query(models.Product).filter(models.Product.name.ilike(req.name)).first()
+    if p: return p
+    p = models.Product(name=req.name, category=req.category)
+    db.add(p)
+    db.commit()
+    db.refresh(p)
+    return p
+
+@router.post("/price-logs", response_model=schemas.PriceLogResponse)
+def create_price_log(req: schemas.PriceLogCreate, db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
+    log = models.PriceLog(product_id=req.product_id, vendor_id=req.vendor_id, price=req.price)
+    db.add(log)
+    db.commit()
+    db.refresh(log)
+    return log

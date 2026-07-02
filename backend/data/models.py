@@ -102,4 +102,23 @@ class AuthSession(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     last_active = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
+class Vendor(Base):
+    __tablename__ = "vendors"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, index=True, nullable=False)
+
+class Product(Base):
+    __tablename__ = "products"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, index=True, nullable=False)
+    category = Column(String, default="uncategorized")
+
+class PriceLog(Base):
+    __tablename__ = "price_logs"
+    id = Column(Integer, primary_key=True, index=True)
+    product_id = Column(Integer, nullable=False)
+    vendor_id = Column(Integer, nullable=False)
+    price = Column(Integer, nullable=False)
+    date = Column(DateTime(timezone=True), server_default=func.now())
+
 

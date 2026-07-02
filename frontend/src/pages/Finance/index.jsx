@@ -6,9 +6,10 @@ import TransactionsTab from './TransactionsTab';
 import WalletsTab from './WalletsTab';
 import GoalsTab from './GoalsTab';
 import InsightsTab from './InsightsTab';
+import PriceDbTab from './PriceDbTab';
 import { useToast } from '../../context/ToastContext';
 
-const TABS = ['overview', 'transactions', 'wallets', 'goals', 'insights'];
+const TABS = ['overview', 'transactions', 'wallets', 'goals', 'price-db', 'insights'];
 
 export default function FinanceApp({ token, onBack }) {
   const [activeTab, setActiveTab] = useState('overview');
@@ -119,6 +120,7 @@ export default function FinanceApp({ token, onBack }) {
             {activeTab === 'transactions' && <TransactionsTab transactions={transactions} formatNGN={formatNGN} />}
             {activeTab === 'wallets' && <WalletsTab wallets={wallets} setWallets={setWallets} formatNGN={formatNGN} token={token} />}
             {activeTab === 'goals' && <GoalsTab goals={goals} setGoals={setGoals} wallets={wallets} formatNGN={formatNGN} token={token} />}
+            {activeTab === 'price-db' && <PriceDbTab token={token} formatNGN={formatNGN} />}
             {activeTab === 'insights' && <InsightsTab token={token} />}
           </>
         )}

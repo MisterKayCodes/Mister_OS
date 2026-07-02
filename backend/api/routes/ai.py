@@ -9,6 +9,8 @@ import httpx
 from datetime import datetime
 from api.dependencies import get_master_token
 from data import database, models, schemas, vector
+from datetime import datetime
+import re
 
 router = APIRouter(prefix="/api/ai", tags=["AI"])
 
@@ -89,18 +91,42 @@ async def omni_chat(request: schemas.OmniChatRequest, db: Session = Depends(data
     relevant_notes = vector.query_relevant_notes(request.message, n_results=3)
     context_text = "\n\n".join(relevant_notes) if relevant_notes else "No relevant notes found."
     
-    # 2. Build the System Prompt
+    # 2. Retrieve Context from Price DB
+    products = db.query(models.Product).all()
+    price_context_lines = []
+    for p in products:
+        if p.name.lower() in request.message.lower():
+            latest_log = db.query(models.PriceLog).filter(models.PriceLog.product_id == p.id).order_by(models.PriceLog.date.desc()).first()
+            if latest_log:
+                vendor = db.query(models.Vendor).filter(models.Vendor.id == latest_log.vendor_id).first()
+                v_name = vendor.name if vendor else "Unknown"
+                price_context_lines.append(f"- {p.name} at {v_name}: ₦{latest_log.price}")
+    price_context_text = "\n".join(price_context_lines) if price_context_lines else "No relevant price data found."
+    
+    # 3. Build the System Prompt
     system_prompt = f"""You are Mister, an advanced AI Assistant operating as a 'Second Brain'.
-    You have access to the user's personal notes. Use the provided Context from their notes to answer their questions.
-    If the context does not contain the answer, rely on your general knowledge but mention you couldn't find it in their notes.
+You have access to the user's personal notes and their Price Database.
+
+CONTEXT FROM USER'S NOTES:
+{context_text}
+
+PRICE DB CONTEXT (Current Prices):
+{price_context_text}
+
+AUTONOMOUS ACTION CAPABILITIES:
+If the user explicitly tells you they bought something, you must calculate the total price based on the Price DB Context (if available, otherwise estimate or ask), and output a hidden command on a new line to log the expense.
+Command Format: [LOG_EXPENSE: /spend amount description #category @date]
+Example: [LOG_EXPENSE: /spend 1000 4 eggs from Madam Tochi #food @today]
+
+If the user explicitly tells you a NEW price for an item, output a hidden command to update the Price DB.
+Command Format: [LOG_PRICE: product_name, vendor_name, price]
+Example: [LOG_PRICE: Eggs, Madam Tochi, 250]
+
+Only output these commands if the user is explicitly making a purchase or stating a new price. Do not output them if they are just asking a question.
+"""
     
-    CONTEXT FROM USER'S NOTES:
-    {context_text}
-    """
-    
-    # 3. Handle Chat Session History
+    # 4. Handle Chat Session History
     if not request.session_id:
-        # Create new session
         db_session = models.ChatSession(title=request.message[:30] + "...")
         db.add(db_session)
         db.commit()
@@ -114,44 +140,71 @@ async def omni_chat(request: schemas.OmniChatRequest, db: Session = Depends(data
     db.add(db_user_msg)
     db.commit()
     
-    # Fetch previous messages for context window (last 10)
+    # Fetch previous messages for context window
     history = db.query(models.ChatMessage).filter(models.ChatMessage.session_id == session_id).order_by(models.ChatMessage.id.asc()).limit(10).all()
     
     messages = [{"role": "system", "content": system_prompt}]
     for msg in history:
         messages.append({"role": msg.role, "content": msg.content})
         
-    # 4. Call Groq
-    headers = {
-        "Authorization": f"Bearer {GROQ_API_KEY}",
-        "Content-Type": "application/json"
-    }
-    payload = {
-        "model": "llama-3.1-8b-instant",
-        "messages": messages,
-        "temperature": 0.7,
-        "max_tokens": 1024
-    }
+    # 5. Call Groq
+    headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
+    payload = {"model": "llama-3.1-8b-instant", "messages": messages, "temperature": 0.7, "max_tokens": 1024}
     
     async with httpx.AsyncClient() as client:
         try:
-            print(f"Sending Omni-Chat request with {len(relevant_notes)} context chunks...")
             response = await client.post(GROQ_API_URL, headers=headers, json=payload, timeout=30.0)
             response.raise_for_status()
             data = response.json()
             ai_reply = data["choices"][0]["message"]["content"]
             
+            # --- INTERCEPT AUTONOMOUS COMMANDS ---
+            # Process [LOG_PRICE: ...]
+            price_matches = re.findall(r"\[LOG_PRICE:\s*(.+?),\s*(.+?),\s*(\d+)\]", ai_reply)
+            for product_name, vendor_name, price in price_matches:
+                v = db.query(models.Vendor).filter(models.Vendor.name.ilike(vendor_name.strip())).first()
+                if not v:
+                    v = models.Vendor(name=vendor_name.strip())
+                    db.add(v)
+                    db.commit()
+                    db.refresh(v)
+                p = db.query(models.Product).filter(models.Product.name.ilike(product_name.strip())).first()
+                if not p:
+                    p = models.Product(name=product_name.strip(), category="uncategorized")
+                    db.add(p)
+                    db.commit()
+                    db.refresh(p)
+                plog = models.PriceLog(product_id=p.id, vendor_id=v.id, price=int(price))
+                db.add(plog)
+                db.commit()
+                ai_reply = re.sub(r"\[LOG_PRICE:.*?\]\n?", "", ai_reply)
+                
+            # Process [LOG_EXPENSE: ...]
+            expense_matches = re.findall(r"\[LOG_EXPENSE:\s*(.+?)\]", ai_reply)
+            for cmd_str in expense_matches:
+                today_title = datetime.now().strftime("%B %d, %Y")
+                note = db.query(models.Note).filter(models.Note.title.like(f"%{today_title}%")).first()
+                if not note:
+                    note = models.Note(title=today_title, content="")
+                    db.add(note)
+                    db.commit()
+                    db.refresh(note)
+                
+                note.content += f"\n{cmd_str.strip()}"
+                db.commit()
+                
+                from api.routes.notes import parse_finance_commands
+                parse_finance_commands(note.content, note.id, db)
+                ai_reply = re.sub(r"\[LOG_EXPENSE:.*?\]\n?", "", ai_reply)
+            
             # Save Assistant Message
-            db_ai_msg = models.ChatMessage(session_id=session_id, role="assistant", content=ai_reply)
+            db_ai_msg = models.ChatMessage(session_id=session_id, role="assistant", content=ai_reply.strip())
             db.add(db_ai_msg)
             db.commit()
             db.refresh(db_ai_msg)
             
             return schemas.ChatMessageResponse(
-                id=db_ai_msg.id,
-                role=db_ai_msg.role,
-                content=db_ai_msg.content,
-                created_at=db_ai_msg.created_at
+                id=db_ai_msg.id, role=db_ai_msg.role, content=db_ai_msg.content, created_at=db_ai_msg.created_at
             )
         except Exception as e:
             print(f"Exception in Omni-Chat: {str(e)}")
