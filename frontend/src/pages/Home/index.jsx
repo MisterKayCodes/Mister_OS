@@ -1,5 +1,4 @@
-// Rule: Max 200 lines per file — split if exceeded
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Edit2 } from 'lucide-react';
 import Sidebar from '../../components/layout/Sidebar';
 import AuthScreen from '../../components/layout/AuthScreen';
@@ -8,188 +7,54 @@ import ChatAnalyzer from '../../components/features/ChatAnalyzer';
 import FinanceApp from '../../pages/Finance';
 import OmniChat from '../../components/features/OmniChat';
 import SecurityModal from '../../components/features/SecurityModal';
-import { fetchNotesApi, createNoteApi, saveNoteApi, analyzeChatApi, deleteNotesApi, getFoldersApi, createFolderApi, deleteFolderApi, moveNotesBulkApi } from '../../utils/api';
-import { useToast } from '../../context/ToastContext';
+import useHomeState from './components/useHomeState';
 
 export default function Home() {
-  const [token, setToken] = useState(localStorage.getItem("master_token") || "");
-  const [isAuthenticated, setIsAuthenticated] = useState(!!token);
-  const [notes, setNotes] = useState([]);
-  const [folders, setFolders] = useState([]);
-  const [activeNote, setActiveNote] = useState(null);
-  const [viewMode, setViewMode] = useState('editor');
-  const [content, setContent] = useState("");
-  const [title, setTitle] = useState("");
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [analysisResult, setAnalysisResult] = useState(null);
-  const [showSecurity, setShowSecurity] = useState(false);
-  const { showToast } = useToast();
+  const state = useHomeState();
 
-  useEffect(() => { if (isAuthenticated) fetchNotes(); }, [isAuthenticated]);
+  if (!state.isAuthenticated) return <AuthScreen onLogin={state.handleLogin} />;
 
-  const fetchNotes = async () => {
-    try {
-      const [notesData, foldersData] = await Promise.all([
-        fetchNotesApi(token),
-        getFoldersApi(token)
-      ]);
-      setNotes(notesData);
-      setFolders(foldersData);
-      if (notesData.length > 0 && !activeNote) selectNote(notesData[0]);
-    } catch (err) {
-      if (err.message === "Invalid Master Token") {
-        setIsAuthenticated(false);
-        localStorage.removeItem("master_token");
-      }
-      showToast(err.message, "error");
-    }
-  };
-
-  const handleLogin = (newToken) => {
-    localStorage.setItem("master_token", newToken);
-    setToken(newToken);
-    setIsAuthenticated(true);
-  };
-
-  const createNote = async (folderId = null) => {
-    try {
-      const newNote = await createNoteApi(token, folderId);
-      setNotes([newNote, ...notes]);
-      selectNote(newNote);
-    } catch (err) {
-      showToast("Failed to create note: " + err.message, "error");
-    }
-  };
-
-  const handleCreateFolder = async (name) => {
-    try {
-      const newFolder = await createFolderApi(name, token);
-      setFolders([...folders, newFolder]);
-      showToast("Folder created", "success");
-    } catch (err) {
-      showToast(err.message, "error");
-    }
-  };
-
-  const handleDeleteFolder = async (id) => {
-    try {
-      await deleteFolderApi(id, token);
-      setFolders(folders.filter(f => f.id !== id));
-      fetchNotes();
-      showToast("Folder deleted", "success");
-    } catch (err) {
-      showToast(err.message, "error");
-    }
-  };
-
-  const handleMoveNotes = async (noteIds, folderId) => {
-    try {
-      await moveNotesBulkApi(noteIds, folderId, token);
-      fetchNotes();
-      showToast(`Moved ${noteIds.length} note(s)`, "success");
-    } catch (err) {
-      showToast("Move failed: " + err.message, "error");
-    }
-  };
-
-  const selectNote = (note) => {
-    setActiveNote(note);
-    setContent(note.content);
-    setTitle(note.title || "");
-    setAnalysisResult(null);
-    setViewMode('editor');
-  };
-
-  useEffect(() => {
-    if (!activeNote) return;
-    const timer = setTimeout(() => {
-      if (content !== activeNote.content || title !== activeNote.title) {
-        saveNoteApi(activeNote.id, content, token, title, activeNote.folder_id).then(fetchNotes);
-      }
-    }, 1000);
-    return () => clearTimeout(timer);
-  }, [content, title]);
-
-  const analyzeChat = async () => {
-    if (!content.trim()) return;
-    setIsAnalyzing(true);
-    setAnalysisResult(null);
-    try {
-      const result = await analyzeChatApi(content, token);
-      setAnalysisResult(result);
-      showToast("Pitch analyzed!", "success");
-    } catch (err) {
-      showToast("Error: " + err.message, "error");
-    } finally {
-      setIsAnalyzing(false);
-    }
-  };
-
-  const viewFinance = () => {
-    setViewMode('finance');
-    setActiveNote(null);
-  };
-
-  const handleDeleteNotes = async (ids) => {
-    try {
-      await deleteNotesApi(ids, token);
-      showToast(`${ids.length} note(s) deleted`, "success");
-      if (activeNote && ids.includes(activeNote.id)) {
-        setActiveNote(null);
-        setContent("");
-        setTitle("");
-      }
-      fetchNotes();
-    } catch (err) {
-      showToast("Delete failed: " + err.message, "error");
-    }
-  };
-
-  const goBack = () => { setActiveNote(null); setViewMode('editor'); };
-
-  if (!isAuthenticated) return <AuthScreen onLogin={handleLogin} />;
-
-  const showSidebar = !activeNote && viewMode !== 'omnichat' && viewMode !== 'finance';
+  const showSidebar = !state.activeNote && state.viewMode !== 'omnichat' && state.viewMode !== 'finance';
 
   return (
     <div className="flex h-screen overflow-hidden text-gray-800 bg-[#f9f9f9] relative">
       <div className={`w-full md:w-72 shrink-0 ${showSidebar ? 'flex' : 'hidden md:flex'} flex-col h-full`}>
         <Sidebar
-          notes={notes}
-          folders={folders}
-          activeNoteId={activeNote?.id}
-          onSelectNote={selectNote}
-          onCreateNote={createNote}
-          onCreateFolder={handleCreateFolder}
-          onDeleteFolder={handleDeleteFolder}
-          onMoveNotes={handleMoveNotes}
-          onViewExpenses={viewFinance}
-          onOpenOmniBrain={() => { setViewMode('omnichat'); setActiveNote(null); }}
-          onOpenSecurity={() => setShowSecurity(true)}
-          onDeleteNotes={handleDeleteNotes}
+          notes={state.notes}
+          folders={state.folders}
+          activeNoteId={state.activeNote?.id}
+          onSelectNote={state.selectNote}
+          onCreateNote={state.createNote}
+          onCreateFolder={state.handleCreateFolder}
+          onDeleteFolder={state.handleDeleteFolder}
+          onMoveNotes={state.handleMoveNotes}
+          onViewExpenses={state.viewFinance}
+          onOpenOmniBrain={() => { state.setViewMode('omnichat'); state.setActiveNote(null); }}
+          onOpenSecurity={() => state.setShowSecurity(true)}
+          onDeleteNotes={state.handleDeleteNotes}
         />
       </div>
 
       <div className={`flex-1 flex bg-white relative overflow-hidden ${showSidebar ? 'hidden md:flex' : 'flex'}`}>
-        {viewMode === 'omnichat' ? (
-          <OmniChat token={token} onBack={goBack} />
-        ) : viewMode === 'finance' ? (
-          <FinanceApp token={token} onBack={goBack} />
-        ) : activeNote ? (
+        {state.viewMode === 'omnichat' ? (
+          <OmniChat token={state.token} onBack={state.goBack} />
+        ) : state.viewMode === 'finance' ? (
+          <FinanceApp token={state.token} onBack={state.goBack} />
+        ) : state.activeNote ? (
           <>
             <Editor
-              content={content}
-              setContent={setContent}
-              title={title}
-              setTitle={setTitle}
-              activeNote={activeNote}
-              onAnalyze={analyzeChat}
-              isAnalyzing={isAnalyzing}
-              onBack={goBack}
-              token={token}
+              content={state.content}
+              setContent={state.setContent}
+              title={state.title}
+              setTitle={state.setTitle}
+              activeNote={state.activeNote}
+              onAnalyze={state.analyzeChat}
+              isAnalyzing={state.isAnalyzing}
+              onBack={state.goBack}
+              token={state.token}
             />
             <div className="hidden md:block">
-              <ChatAnalyzer result={analysisResult} onClose={() => setAnalysisResult(null)} />
+              <ChatAnalyzer result={state.analysisResult} onClose={() => state.setAnalysisResult(null)} />
             </div>
           </>
         ) : (
@@ -201,10 +66,10 @@ export default function Home() {
       </div>
 
       <div className="md:hidden">
-        <ChatAnalyzer result={analysisResult} onClose={() => setAnalysisResult(null)} />
+        <ChatAnalyzer result={state.analysisResult} onClose={() => state.setAnalysisResult(null)} />
       </div>
 
-      {showSecurity && <SecurityModal token={token} onClose={() => setShowSecurity(false)} />}
+      {state.showSecurity && <SecurityModal token={state.token} onClose={() => state.setShowSecurity(false)} />}
     </div>
   );
 }

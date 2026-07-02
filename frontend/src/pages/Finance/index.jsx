@@ -2,11 +2,11 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { getFinanceOverview, getTransactions, getWallets, getGoals } from '../../utils/financeApi';
-import TransactionsTab from './TransactionsTab';
-import WalletsTab from './WalletsTab';
-import GoalsTab from './GoalsTab';
-import InsightsTab from './InsightsTab';
-import PriceDbTab from './PriceDbTab';
+import TransactionsTab from './components/TransactionsTab';
+import WalletsTab from './components/WalletsTab';
+import GoalsTab from './components/GoalsTab';
+import InsightsTab from './components/InsightsTab';
+import PriceDbTab from './components/PriceDbTab';
 import { useToast } from '../../context/ToastContext';
 
 const TABS = ['overview', 'transactions', 'wallets', 'goals', 'price-db', 'insights'];

@@ -1,8 +1,8 @@
 // Rule: Max 200 lines per file — split if exceeded
 import React, { useState } from 'react';
 import { Wallet, Plus, Trash2, ArrowDownCircle, X } from 'lucide-react';
-import { createWalletApi, deleteWalletApi, depositToWalletApi } from '../../utils/financeApi';
-import { useToast } from '../../context/ToastContext';
+import { createWalletApi, deleteWalletApi, depositToWalletApi } from '../../../utils/financeApi';
+import { useToast } from '../../../context/ToastContext';
 
 const TYPE_STYLES = {
   liquid:     { badge: 'bg-green-100 text-green-700', border: 'border-green-200' },

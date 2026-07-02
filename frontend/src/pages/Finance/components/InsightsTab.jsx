@@ -1,8 +1,8 @@
 // Rule: Max 200 lines per file — split if exceeded
 import React, { useState } from 'react';
 import { Sparkles, Send, BrainCircuit, Loader } from 'lucide-react';
-import { getFinanceInsightsApi, canIAffordApi } from '../../utils/financeApi';
-import { useToast } from '../../context/ToastContext';
+import { getFinanceInsightsApi, canIAffordApi } from '../../../utils/financeApi';
+import { useToast } from '../../../context/ToastContext';
 
 export default function InsightsTab({ token }) {
   const [insights, setInsights] = useState('');

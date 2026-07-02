@@ -1,8 +1,8 @@
 // Rule: Max 200 lines per file — split if exceeded
 import React, { useState, useEffect } from 'react';
 import { Database, TrendingUp, TrendingDown, Minus, Plus, Loader } from 'lucide-react';
-import { getPriceDbApi, createVendorApi, createProductApi, createPriceLogApi } from '../../utils/financeApi';
-import { useToast } from '../../context/ToastContext';
+import { getPriceDbApi, createVendorApi, createProductApi, createPriceLogApi } from '../../../utils/financeApi';
+import { useToast } from '../../../context/ToastContext';
 
 export default function PriceDbTab({ token, formatNGN }) {
   const [items, setItems] = useState([]);
@@ -29,17 +29,13 @@ export default function PriceDbTab({ token, formatNGN }) {
     e.preventDefault();
     if (!form.productName || !form.vendorName || !form.price) return;
     try {
-      // Create or find vendor
       const vendor = await createVendorApi({ name: form.vendorName.trim() }, token);
-      // Create or find product
       const product = await createProductApi({ name: form.productName.trim(), category: 'uncategorized' }, token);
-      // Log price
       await createPriceLogApi({ product_id: product.id, vendor_id: vendor.id, price: parseInt(form.price) }, token);
-      
       showToast('Price logged successfully!', 'success');
       setForm({ productName: '', vendorName: '', price: '' });
       setShowForm(false);
-      fetchDb(); // Refresh to get inflation data
+      fetchDb();
     } catch (err) {
       showToast('Error logging price: ' + err.message, 'error');
     }

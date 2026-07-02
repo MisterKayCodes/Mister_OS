@@ -1,8 +1,8 @@
 // Rule: Max 200 lines per file — split if exceeded
 import React, { useState } from 'react';
 import { Target, Plus, Trophy, Trash2, CheckCircle } from 'lucide-react';
-import { createGoalApi, deleteGoalApi, achieveGoalApi } from '../../utils/financeApi';
-import { useToast } from '../../context/ToastContext';
+import { createGoalApi, deleteGoalApi, achieveGoalApi } from '../../../utils/financeApi';
+import { useToast } from '../../../context/ToastContext';
 
 export default function GoalsTab({ goals, setGoals, wallets, formatNGN, token }) {
   const [showForm, setShowForm] = useState(false);
