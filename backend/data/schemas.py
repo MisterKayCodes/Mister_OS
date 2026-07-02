@@ -1,12 +1,9 @@
-# Rule: Max 200 lines per file — split if exceeded
-# MEMORY: Pydantic Schemas
-
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
 
 class NoteBase(BaseModel):
-    title: Optional[String] = None
+    title: Optional[str] = None
     content: str
 
 class NoteCreate(NoteBase):
@@ -17,7 +14,7 @@ class NoteUpdate(NoteBase):
 
 class NoteResponse(NoteBase):
     id: int
-    title: str
+    title: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 

@@ -4,10 +4,28 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
+import re
 from data import models, schemas, database
 from api.dependencies import get_master_token
 
 router = APIRouter(prefix="/api/notes", tags=["Notes"])
+
+def parse_and_save_expenses(content: str, note_id: int, db: Session):
+    # Find all lines starting with /spend
+    # Format: /spend 1000 Geisha at Mama Tochi
+    pattern = r"^\s*/spend\s+(\d+(?:\.\d+)?)\s+(.+)$"
+    
+    # First, clear old expenses for this note to avoid duplicates on update
+    db.query(models.Expense).filter(models.Expense.note_id == note_id).delete()
+    
+    for line in content.split('\n'):
+        match = re.match(pattern, line, re.IGNORECASE)
+        if match:
+            amount = int(float(match.group(1)))
+            description = match.group(2).strip()
+            db_expense = models.Expense(amount=amount, description=description, note_id=note_id)
+            db.add(db_expense)
+    db.commit()
 
 @router.post("/", response_model=schemas.NoteResponse)
 def create_note(note: schemas.NoteCreate, db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
@@ -21,6 +39,10 @@ def create_note(note: schemas.NoteCreate, db: Session = Depends(database.get_db)
     db.add(db_note)
     db.commit()
     db.refresh(db_note)
+    
+    # Parse expenses
+    parse_and_save_expenses(note.content, db_note.id, db)
+    
     return db_note
 
 @router.get("/", response_model=List[schemas.NoteResponse])
@@ -47,4 +69,25 @@ def update_note(note_id: int, note_update: schemas.NoteUpdate, db: Session = Dep
         
     db.commit()
     db.refresh(db_note)
+    
+    # Parse expenses on update
+    parse_and_save_expenses(note_update.content, db_note.id, db)
+    
     return db_note
+
+@router.get("/expenses/all")
+def get_all_expenses(db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
+    expenses = db.query(models.Expense).order_by(models.Expense.created_at.desc()).all()
+    # Also fetch note titles for context
+    result = []
+    for exp in expenses:
+        note = db.query(models.Note).filter(models.Note.id == exp.note_id).first()
+        result.append({
+            "id": exp.id,
+            "amount": exp.amount,
+            "description": exp.description,
+            "date": exp.created_at,
+            "note_title": note.title if note else "Unknown Note"
+        })
+    return result
+
