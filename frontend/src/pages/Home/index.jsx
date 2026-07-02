@@ -7,6 +7,7 @@ import Editor from '../../components/features/Editor';
 import ChatAnalyzer from '../../components/features/ChatAnalyzer';
 import ExpensesModal from '../../components/features/ExpensesModal';
 import { fetchNotesApi, createNoteApi, saveNoteApi, fetchExpensesApi, analyzeChatApi } from '../../utils/api';
+import { useToast } from '../../context/ToastContext';
 
 export default function Home() {
   const [token, setToken] = useState(localStorage.getItem("master_token") || "");
@@ -18,6 +19,7 @@ export default function Home() {
   const [analysisResult, setAnalysisResult] = useState(null);
   const [showExpenses, setShowExpenses] = useState(false);
   const [expenses, setExpenses] = useState([]);
+  const { showToast } = useToast();
 
   useEffect(() => {
     if (isAuthenticated) fetchNotes();
@@ -32,8 +34,9 @@ export default function Home() {
       if (err.message === "Invalid Master Token") {
         setIsAuthenticated(false);
         localStorage.removeItem("master_token");
-        alert(err.message);
+        showToast(err.message, "error");
       } else {
+        showToast("Failed to fetch notes: " + err.message, "error");
         console.error("Failed to fetch notes", err);
       }
     }
@@ -51,6 +54,7 @@ export default function Home() {
       setNotes([newNote, ...notes]);
       selectNote(newNote);
     } catch (err) {
+      showToast("Failed to create note: " + err.message, "error");
       console.error(err);
     }
   };
@@ -78,8 +82,9 @@ export default function Home() {
     try {
       const result = await analyzeChatApi(content, token);
       setAnalysisResult(result);
+      showToast("Pitch analyzed successfully!", "success");
     } catch (err) {
-      alert("Error analyzing chat: " + err.message);
+      showToast("Error analyzing chat: " + err.message, "error");
     } finally {
       setIsAnalyzing(false);
     }
@@ -91,7 +96,7 @@ export default function Home() {
       setExpenses(data);
       setShowExpenses(true);
     } catch (err) {
-      alert(err.message);
+      showToast(err.message, "error");
     }
   };
 

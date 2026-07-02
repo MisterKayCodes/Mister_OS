@@ -43,7 +43,7 @@ async def analyze_chat(request: ChatAnalysisRequest, token: str = Depends(get_ma
     }
     
     payload = {
-        "model": "llama3-8b-8192",
+        "model": "llama-3.1-8b-instant",
         "messages": [{"role": "user", "content": prompt}],
         "temperature": 0.5,
         "max_tokens": 1024

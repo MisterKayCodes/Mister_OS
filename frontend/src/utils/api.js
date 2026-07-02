@@ -1,6 +1,8 @@
 // Rule: Max 200 lines per file — split if exceeded
-const API_BASE = "http://localhost:8011/api/notes";
-const AI_BASE = "http://localhost:8011/api/ai";
+// Use the actual device IP to allow mobile connections
+const hostname = window.location.hostname || "localhost";
+const API_BASE = `http://${hostname}:8011/api/notes`;
+const AI_BASE = `http://${hostname}:8011/api/ai`;
 
 export const fetchNotesApi = async (token) => {
   const res = await fetch(`${API_BASE}/`, { headers: { "X-Master-Token": token } });
