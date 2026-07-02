@@ -11,24 +11,59 @@ from api.dependencies import get_master_token
 
 router = APIRouter(prefix="/api/notes", tags=["Notes"])
 
-class BulkDeleteRequest(BaseModel):
-    note_ids: List[int]
+import httpx
 
-def parse_and_save_expenses(content: str, note_id: int, db: Session):
-    # Find all lines starting with /spend
-    # Format: /spend 1000 Geisha at Mama Tochi
-    pattern = r"^\s*/spend\s+(\d+(?:\.\d+)?)\s+(.+)$"
+def parse_finance_commands(content: str, note_id: int, db: Session):
+    # Clear old transactions for this note to prevent duplicates
+    db.query(models.Transaction).filter(models.Transaction.note_id == note_id).delete()
     
-    # First, clear old expenses for this note to avoid duplicates on update
-    db.query(models.Expense).filter(models.Expense.note_id == note_id).delete()
+    # Patterns
+    # /spend [amount] [desc] #[tag]
+    # /income [amount] [desc] #[tag]
+    pattern = r"^\s*/(spend|income|save|owe|paid-back)\s+(\$?)(\d+(?:\.\d+)?)\s+(.+?)(?:\s+#(\w+))?\s*$"
+    
+    usd_rate = None
     
     for line in content.split('\n'):
         match = re.match(pattern, line, re.IGNORECASE)
         if match:
-            amount = int(float(match.group(1)))
-            description = match.group(2).strip()
-            db_expense = models.Expense(amount=amount, description=description, note_id=note_id)
-            db.add(db_expense)
+            cmd = match.group(1).lower()
+            is_usd = match.group(2) == '$'
+            amount = float(match.group(3))
+            desc = match.group(4).strip()
+            tag = match.group(5).lower() if match.group(5) else "uncategorized"
+            
+            # Map command to type
+            tx_type = "expense"
+            if cmd == "income": tx_type = "income"
+            elif cmd == "save": tx_type = "save"
+            elif cmd in ["owe", "paid-back"]: continue # Handled separately later if needed
+            
+            # USD Conversion
+            rate = 1.0
+            naira_amt = int(amount)
+            if is_usd:
+                if not usd_rate:
+                    try:
+                        res = httpx.get("https://open.er-api.com/v6/latest/USD", timeout=5.0)
+                        usd_rate = res.json().get("rates", {}).get("NGN", 1500.0)
+                    except Exception:
+                        usd_rate = 1500.0 # Fallback
+                rate = usd_rate
+                naira_amt = int(amount * rate)
+                
+            db_tx = models.Transaction(
+                type=tx_type,
+                amount_naira=naira_amt,
+                original_amount=amount if is_usd else None,
+                original_currency="USD" if is_usd else "NGN",
+                exchange_rate=rate,
+                description=desc,
+                category=tag,
+                note_id=note_id
+            )
+            db.add(db_tx)
+    
     db.commit()
 
 @router.post("/", response_model=schemas.NoteResponse)
@@ -44,8 +79,8 @@ def create_note(note: schemas.NoteCreate, db: Session = Depends(database.get_db)
     db.commit()
     db.refresh(db_note)
     
-    # Parse expenses
-    parse_and_save_expenses(note.content, db_note.id, db)
+    # Parse finance commands
+    parse_finance_commands(note.content, db_note.id, db)
     
     # Store in Vector DB for Omni-Brain
     vector.upsert_note_vectors(db_note.id, db_note.title, db_note.content)
@@ -77,8 +112,8 @@ def update_note(note_id: int, note_update: schemas.NoteUpdate, db: Session = Dep
     db.commit()
     db.refresh(db_note)
     
-    # Parse expenses on update
-    parse_and_save_expenses(note_update.content, db_note.id, db)
+    # Parse finance commands on update
+    parse_finance_commands(note_update.content, db_note.id, db)
     
     # Update in Vector DB for Omni-Brain
     vector.upsert_note_vectors(db_note.id, db_note.title, db_note.content)
@@ -102,7 +137,7 @@ def get_all_expenses(db: Session = Depends(database.get_db), token: str = Depend
     return result
 
 @router.post("/delete-bulk")
-def delete_notes_bulk(req: BulkDeleteRequest, db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
+def delete_notes_bulk(req: schemas.BulkDeleteRequest, db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
     for note_id in req.note_ids:
         db_note = db.query(models.Note).filter(models.Note.id == note_id).first()
         if db_note:

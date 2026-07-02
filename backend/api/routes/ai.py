@@ -13,20 +13,8 @@ router = APIRouter(prefix="/api/ai", tags=["AI"])
 
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 
-class ChatAnalysisRequest(BaseModel):
-    chat_log: str
-
-class ChatAnalysisResponse(BaseModel):
-    analysis: str
-
-class TitleGenerateRequest(BaseModel):
-    content: str
-
-class TitleGenerateResponse(BaseModel):
-    title: str
-
-@router.post("/generate-title", response_model=TitleGenerateResponse)
-async def generate_title(request: TitleGenerateRequest, token: str = Depends(get_master_token)):
+@router.post("/generate-title", response_model=schemas.TitleGenerateResponse)
+async def generate_title(request: schemas.TitleGenerateRequest, token: str = Depends(get_master_token)):
     GROQ_API_KEY = os.getenv("GROQ_API_KEY")
     if not GROQ_API_KEY:
         raise HTTPException(status_code=500, detail="GROQ_API_KEY not configured.")
@@ -38,12 +26,12 @@ async def generate_title(request: TitleGenerateRequest, token: str = Depends(get
             res = await client.post(GROQ_API_URL, headers=headers, json=payload, timeout=15.0)
             res.raise_for_status()
             title = res.json()["choices"][0]["message"]["content"].strip().strip('"').strip("'")
-            return TitleGenerateResponse(title=title)
+            return schemas.TitleGenerateResponse(title=title)
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/analyze-chat", response_model=ChatAnalysisResponse)
-async def analyze_chat(request: ChatAnalysisRequest, token: str = Depends(get_master_token)):
+@router.post("/analyze-chat", response_model=schemas.ChatAnalysisResponse)
+async def analyze_chat(request: schemas.ChatAnalysisRequest, token: str = Depends(get_master_token)):
     GROQ_API_KEY = os.getenv("GROQ_API_KEY")
     if not GROQ_API_KEY:
         raise HTTPException(status_code=500, detail="GROQ_API_KEY not configured. Ensure .env is loaded.")
@@ -85,7 +73,7 @@ async def analyze_chat(request: ChatAnalysisRequest, token: str = Depends(get_ma
             response.raise_for_status()
             data = response.json()
             analysis = data["choices"][0]["message"]["content"]
-            return ChatAnalysisResponse(analysis=analysis)
+            return schemas.ChatAnalysisResponse(analysis=analysis)
         except Exception as e:
             print(f"Exception during Groq call: {str(e)}")
             raise HTTPException(status_code=500, detail=f"Groq API Error: {str(e)}")

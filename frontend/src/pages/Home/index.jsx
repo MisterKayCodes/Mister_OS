@@ -5,9 +5,9 @@ import Sidebar from '../../components/layout/Sidebar';
 import AuthScreen from '../../components/layout/AuthScreen';
 import Editor from '../../components/features/Editor';
 import ChatAnalyzer from '../../components/features/ChatAnalyzer';
-import ExpensesModal from '../../components/features/ExpensesModal';
+import FinanceApp from '../../pages/Finance';
 import OmniChat from '../../components/features/OmniChat';
-import { fetchNotesApi, createNoteApi, saveNoteApi, fetchExpensesApi, analyzeChatApi, deleteNotesApi } from '../../utils/api';
+import { fetchNotesApi, createNoteApi, saveNoteApi, analyzeChatApi, deleteNotesApi } from '../../utils/api';
 import { useToast } from '../../context/ToastContext';
 
 export default function Home() {
@@ -20,8 +20,6 @@ export default function Home() {
   const [title, setTitle] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState(null);
-  const [showExpenses, setShowExpenses] = useState(false);
-  const [expenses, setExpenses] = useState([]);
   const { showToast } = useToast();
 
   useEffect(() => { if (isAuthenticated) fetchNotes(); }, [isAuthenticated]);
@@ -90,14 +88,9 @@ export default function Home() {
     }
   };
 
-  const viewExpenses = async () => {
-    try {
-      const data = await fetchExpensesApi(token);
-      setExpenses(data);
-      setShowExpenses(true);
-    } catch (err) {
-      showToast(err.message, "error");
-    }
+  const viewFinance = () => {
+    setViewMode('finance');
+    setActiveNote(null);
   };
 
   const handleDeleteNotes = async (ids) => {
@@ -119,7 +112,7 @@ export default function Home() {
 
   if (!isAuthenticated) return <AuthScreen onLogin={handleLogin} />;
 
-  const showSidebar = !activeNote && viewMode !== 'omnichat';
+  const showSidebar = !activeNote && viewMode !== 'omnichat' && viewMode !== 'finance';
 
   return (
     <div className="flex h-screen overflow-hidden text-gray-800 bg-[#f9f9f9] relative">
@@ -129,7 +122,7 @@ export default function Home() {
           activeNoteId={activeNote?.id}
           onSelectNote={selectNote}
           onCreateNote={createNote}
-          onViewExpenses={viewExpenses}
+          onViewExpenses={viewFinance}
           onOpenOmniBrain={() => { setViewMode('omnichat'); setActiveNote(null); }}
           onDeleteNotes={handleDeleteNotes}
         />
@@ -138,6 +131,8 @@ export default function Home() {
       <div className={`flex-1 flex bg-white relative overflow-hidden ${showSidebar ? 'hidden md:flex' : 'flex'}`}>
         {viewMode === 'omnichat' ? (
           <OmniChat token={token} onBack={goBack} />
+        ) : viewMode === 'finance' ? (
+          <FinanceApp token={token} onBack={goBack} />
         ) : activeNote ? (
           <>
             <Editor
@@ -166,8 +161,6 @@ export default function Home() {
       <div className="md:hidden">
         <ChatAnalyzer result={analysisResult} onClose={() => setAnalysisResult(null)} />
       </div>
-
-      {showExpenses && <ExpensesModal expenses={expenses} onClose={() => setShowExpenses(false)} />}
     </div>
   );
 }
