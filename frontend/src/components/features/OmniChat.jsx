@@ -1,10 +1,10 @@
 // Rule: Max 200 lines per file — split if exceeded
 import React, { useState, useRef, useEffect } from 'react';
-import { Bot, Send, User } from 'lucide-react';
+import { Bot, Send, User, ChevronLeft } from 'lucide-react';
 import { sendOmniChatApi } from '../../utils/api';
 import { useToast } from '../../context/ToastContext';
 
-export default function OmniChat({ token }) {
+export default function OmniChat({ token, onBack }) {
   const [messages, setMessages] = useState([{ role: "assistant", content: "Hello! I am Mister. I have full access to your notebook and expenses. What would you like to know?" }]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -45,7 +45,10 @@ export default function OmniChat({ token }) {
   return (
     <div className="flex-1 flex flex-col h-full bg-white relative">
       {/* Header */}
-      <div className="h-14 border-b border-gray-100 flex items-center px-6 shrink-0 bg-purple-50">
+      <div className="h-14 border-b border-gray-100 flex items-center px-4 md:px-6 shrink-0 bg-purple-50 gap-3">
+        <button onClick={onBack} className="md:hidden text-purple-700 hover:text-purple-900">
+          <ChevronLeft size={22} />
+        </button>
         <h2 className="font-semibold text-purple-800 flex items-center gap-2">
           <Bot size={20} /> Omni-Brain
         </h2>

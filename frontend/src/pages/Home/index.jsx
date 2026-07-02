@@ -7,7 +7,7 @@ import Editor from '../../components/features/Editor';
 import ChatAnalyzer from '../../components/features/ChatAnalyzer';
 import ExpensesModal from '../../components/features/ExpensesModal';
 import OmniChat from '../../components/features/OmniChat';
-import { fetchNotesApi, createNoteApi, saveNoteApi, fetchExpensesApi, analyzeChatApi } from '../../utils/api';
+import { fetchNotesApi, createNoteApi, saveNoteApi, fetchExpensesApi, analyzeChatApi, deleteNotesApi } from '../../utils/api';
 import { useToast } from '../../context/ToastContext';
 
 export default function Home() {
@@ -15,17 +15,16 @@ export default function Home() {
   const [isAuthenticated, setIsAuthenticated] = useState(!!token);
   const [notes, setNotes] = useState([]);
   const [activeNote, setActiveNote] = useState(null);
-  const [viewMode, setViewMode] = useState('editor'); // 'editor' or 'omnichat'
+  const [viewMode, setViewMode] = useState('editor');
   const [content, setContent] = useState("");
+  const [title, setTitle] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState(null);
   const [showExpenses, setShowExpenses] = useState(false);
   const [expenses, setExpenses] = useState([]);
   const { showToast } = useToast();
 
-  useEffect(() => {
-    if (isAuthenticated) fetchNotes();
-  }, [isAuthenticated]);
+  useEffect(() => { if (isAuthenticated) fetchNotes(); }, [isAuthenticated]);
 
   const fetchNotes = async () => {
     try {
@@ -36,11 +35,8 @@ export default function Home() {
       if (err.message === "Invalid Master Token") {
         setIsAuthenticated(false);
         localStorage.removeItem("master_token");
-        showToast(err.message, "error");
-      } else {
-        showToast("Failed to fetch notes: " + err.message, "error");
-        console.error("Failed to fetch notes", err);
       }
+      showToast(err.message, "error");
     }
   };
 
@@ -57,26 +53,27 @@ export default function Home() {
       selectNote(newNote);
     } catch (err) {
       showToast("Failed to create note: " + err.message, "error");
-      console.error(err);
     }
   };
 
   const selectNote = (note) => {
     setActiveNote(note);
     setContent(note.content);
+    setTitle(note.title || "");
     setAnalysisResult(null);
     setViewMode('editor');
   };
 
+  // Auto-save content
   useEffect(() => {
     if (!activeNote) return;
     const timer = setTimeout(() => {
-      if (content !== activeNote.content) {
-        saveNoteApi(activeNote.id, content, token).then(fetchNotes);
+      if (content !== activeNote.content || title !== activeNote.title) {
+        saveNoteApi(activeNote.id, content, token, title).then(fetchNotes);
       }
     }, 1000);
     return () => clearTimeout(timer);
-  }, [content]);
+  }, [content, title]);
 
   const analyzeChat = async () => {
     if (!content.trim()) return;
@@ -85,9 +82,9 @@ export default function Home() {
     try {
       const result = await analyzeChatApi(content, token);
       setAnalysisResult(result);
-      showToast("Pitch analyzed successfully!", "success");
+      showToast("Pitch analyzed!", "success");
     } catch (err) {
-      showToast("Error analyzing chat: " + err.message, "error");
+      showToast("Error: " + err.message, "error");
     } finally {
       setIsAnalyzing(false);
     }
@@ -103,60 +100,74 @@ export default function Home() {
     }
   };
 
+  const handleDeleteNotes = async (ids) => {
+    try {
+      await deleteNotesApi(ids, token);
+      showToast(`${ids.length} note(s) deleted`, "success");
+      if (activeNote && ids.includes(activeNote.id)) {
+        setActiveNote(null);
+        setContent("");
+        setTitle("");
+      }
+      fetchNotes();
+    } catch (err) {
+      showToast("Delete failed: " + err.message, "error");
+    }
+  };
+
+  const goBack = () => { setActiveNote(null); setViewMode('editor'); };
+
   if (!isAuthenticated) return <AuthScreen onLogin={handleLogin} />;
+
+  const showSidebar = !activeNote && viewMode !== 'omnichat';
 
   return (
     <div className="flex h-screen overflow-hidden text-gray-800 bg-[#f9f9f9] relative">
-      <div className={`w-full md:w-72 shrink-0 ${activeNote || viewMode === 'omnichat' ? 'hidden md:flex' : 'flex'} flex-col h-full`}>
-        <Sidebar 
-          notes={notes} 
-          activeNoteId={activeNote?.id} 
-          onSelectNote={selectNote} 
-          onCreateNote={createNote} 
-          onViewExpenses={viewExpenses} 
+      <div className={`w-full md:w-72 shrink-0 ${showSidebar ? 'flex' : 'hidden md:flex'} flex-col h-full`}>
+        <Sidebar
+          notes={notes}
+          activeNoteId={activeNote?.id}
+          onSelectNote={selectNote}
+          onCreateNote={createNote}
+          onViewExpenses={viewExpenses}
           onOpenOmniBrain={() => { setViewMode('omnichat'); setActiveNote(null); }}
+          onDeleteNotes={handleDeleteNotes}
         />
       </div>
 
-      <div className={`flex-1 flex bg-white relative overflow-hidden ${!activeNote && viewMode !== 'omnichat' ? 'hidden md:flex' : 'flex'}`}>
+      <div className={`flex-1 flex bg-white relative overflow-hidden ${showSidebar ? 'hidden md:flex' : 'flex'}`}>
         {viewMode === 'omnichat' ? (
-          <OmniChat token={token} />
+          <OmniChat token={token} onBack={goBack} />
         ) : activeNote ? (
           <>
-            <Editor 
-              content={content} 
-              setContent={setContent} 
-              activeNote={activeNote} 
-              onAnalyze={analyzeChat} 
-              isAnalyzing={isAnalyzing} 
-              onBack={() => setActiveNote(null)}
+            <Editor
+              content={content}
+              setContent={setContent}
+              title={title}
+              setTitle={setTitle}
+              activeNote={activeNote}
+              onAnalyze={analyzeChat}
+              isAnalyzing={isAnalyzing}
+              onBack={goBack}
+              token={token}
             />
             <div className="hidden md:block">
-              <ChatAnalyzer 
-                result={analysisResult} 
-                onClose={() => setAnalysisResult(null)} 
-              />
+              <ChatAnalyzer result={analysisResult} onClose={() => setAnalysisResult(null)} />
             </div>
           </>
         ) : (
           <div className="flex-1 flex items-center justify-center text-gray-400 flex-col gap-4">
-             <Edit2 size={48} className="opacity-20" />
-             <p>Select or create a note.</p>
+            <Edit2 size={48} className="opacity-20" />
+            <p>Select or create a note.</p>
           </div>
         )}
       </div>
 
-      {/* Mobile Chat Analyzer Overlay */}
       <div className="md:hidden">
-        <ChatAnalyzer 
-          result={analysisResult} 
-          onClose={() => setAnalysisResult(null)} 
-        />
+        <ChatAnalyzer result={analysisResult} onClose={() => setAnalysisResult(null)} />
       </div>
 
-      {showExpenses && (
-        <ExpensesModal expenses={expenses} onClose={() => setShowExpenses(false)} />
-      )}
+      {showExpenses && <ExpensesModal expenses={expenses} onClose={() => setShowExpenses(false)} />}
     </div>
   );
 }

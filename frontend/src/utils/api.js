@@ -19,11 +19,11 @@ export const createNoteApi = async (token) => {
   return await res.json();
 };
 
-export const saveNoteApi = async (id, content, token) => {
+export const saveNoteApi = async (id, content, token, title) => {
   await fetch(`${API_BASE}/${id}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json", "X-Master-Token": token },
-    body: JSON.stringify({ content })
+    body: JSON.stringify({ content, title })
   });
 };
 
@@ -57,5 +57,35 @@ export const sendOmniChatApi = async (message, sessionId, token) => {
     const errorData = await res.json().catch(() => ({}));
     throw new Error(errorData.detail || "Omni-Chat request failed");
   }
+  return await res.json();
+};
+
+export const generateTitleApi = async (content, token) => {
+  const res = await fetch(`${AI_BASE}/generate-title`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Master-Token": token },
+    body: JSON.stringify({ content })
+  });
+  if (!res.ok) throw new Error("Title generation failed");
+  const data = await res.json();
+  return data.title;
+};
+
+export const deleteNoteApi = async (noteId, token) => {
+  const res = await fetch(`${API_BASE}/${noteId}`, {
+    method: "DELETE",
+    headers: { "X-Master-Token": token }
+  });
+  if (!res.ok) throw new Error("Failed to delete note");
+  return await res.json();
+};
+
+export const deleteNotesApi = async (noteIds, token) => {
+  const res = await fetch(`${API_BASE}/delete-bulk`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Master-Token": token },
+    body: JSON.stringify({ note_ids: noteIds })
+  });
+  if (!res.ok) throw new Error("Bulk delete failed");
   return await res.json();
 };

@@ -19,6 +19,29 @@ class ChatAnalysisRequest(BaseModel):
 class ChatAnalysisResponse(BaseModel):
     analysis: str
 
+class TitleGenerateRequest(BaseModel):
+    content: str
+
+class TitleGenerateResponse(BaseModel):
+    title: str
+
+@router.post("/generate-title", response_model=TitleGenerateResponse)
+async def generate_title(request: TitleGenerateRequest, token: str = Depends(get_master_token)):
+    GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+    if not GROQ_API_KEY:
+        raise HTTPException(status_code=500, detail="GROQ_API_KEY not configured.")
+    prompt = f"""Generate a short title (5-8 words max) for this note. Return ONLY the title, no quotes, no punctuation at end.\n\nNote:\n{request.content[:600]}"""
+    headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
+    payload = {"model": "llama-3.1-8b-instant", "messages": [{"role": "user", "content": prompt}], "temperature": 0.3, "max_tokens": 20}
+    async with httpx.AsyncClient() as client:
+        try:
+            res = await client.post(GROQ_API_URL, headers=headers, json=payload, timeout=15.0)
+            res.raise_for_status()
+            title = res.json()["choices"][0]["message"]["content"].strip().strip('"').strip("'")
+            return TitleGenerateResponse(title=title)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
 @router.post("/analyze-chat", response_model=ChatAnalysisResponse)
 async def analyze_chat(request: ChatAnalysisRequest, token: str = Depends(get_master_token)):
     GROQ_API_KEY = os.getenv("GROQ_API_KEY")

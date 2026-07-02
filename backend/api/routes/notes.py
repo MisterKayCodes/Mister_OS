@@ -4,11 +4,15 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
+from pydantic import BaseModel
 import re
 from data import models, schemas, database, vector
 from api.dependencies import get_master_token
 
 router = APIRouter(prefix="/api/notes", tags=["Notes"])
+
+class BulkDeleteRequest(BaseModel):
+    note_ids: List[int]
 
 def parse_and_save_expenses(content: str, note_id: int, db: Session):
     # Find all lines starting with /spend
@@ -97,3 +101,30 @@ def get_all_expenses(db: Session = Depends(database.get_db), token: str = Depend
         })
     return result
 
+@router.post("/delete-bulk")
+def delete_notes_bulk(req: BulkDeleteRequest, db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
+    for note_id in req.note_ids:
+        db_note = db.query(models.Note).filter(models.Note.id == note_id).first()
+        if db_note:
+            db.query(models.Expense).filter(models.Expense.note_id == note_id).delete()
+            try:
+                vector.notes_collection.delete(where={"note_id": note_id})
+            except Exception:
+                pass
+            db.delete(db_note)
+    db.commit()
+    return {"deleted": len(req.note_ids)}
+
+@router.delete("/{note_id}")
+def delete_note(note_id: int, db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
+    db_note = db.query(models.Note).filter(models.Note.id == note_id).first()
+    if not db_note:
+        raise HTTPException(status_code=404, detail="Note not found")
+    db.query(models.Expense).filter(models.Expense.note_id == note_id).delete()
+    try:
+        vector.notes_collection.delete(where={"note_id": note_id})
+    except Exception:
+        pass
+    db.delete(db_note)
+    db.commit()
+    return {"message": "Note deleted"}
