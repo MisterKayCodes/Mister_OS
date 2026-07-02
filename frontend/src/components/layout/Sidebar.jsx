@@ -1,14 +1,23 @@
-import React from 'react';
-import { Edit2, DollarSign, Bot, CheckSquare, Trash2, Square, ChevronLeft, Shield } from 'lucide-react';
+import React, { useState } from 'react';
+import { Edit2, DollarSign, Bot, CheckSquare, Trash2, Square, ChevronLeft, Shield, FolderPlus, Folder, ChevronDown, ChevronRight } from 'lucide-react';
 
-export default function Sidebar({ notes, activeNoteId, onSelectNote, onCreateNote, onViewExpenses, onOpenOmniBrain, onOpenSecurity, onDeleteNotes, onBack, showBack }) {
-  const [selectMode, setSelectMode] = React.useState(false);
-  const [selected, setSelected] = React.useState([]);
+export default function Sidebar({ notes, folders = [], activeNoteId, onSelectNote, onCreateNote, onViewExpenses, onOpenOmniBrain, onOpenSecurity, onDeleteNotes, onBack, showBack, onCreateFolder, onDeleteFolder }) {
+  const [selectMode, setSelectMode] = useState(false);
+  const [selected, setSelected] = useState([]);
+  const [expandedFolders, setExpandedFolders] = useState({});
+  const [showFolderModal, setShowFolderModal] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
 
-  const toggleSelect = (id) => {
-    setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  const handleCreateFolderSubmit = (e) => {
+    e.preventDefault();
+    if (newFolderName.trim()) {
+      onCreateFolder(newFolderName.trim());
+      setShowFolderModal(false);
+      setNewFolderName("");
+    }
   };
 
+  const toggleSelect = (id) => setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   const selectAll = () => setSelected(notes.map(n => n.id));
   const clearSelect = () => { setSelected([]); setSelectMode(false); };
 
@@ -18,8 +27,32 @@ export default function Sidebar({ notes, activeNoteId, onSelectNote, onCreateNot
     clearSelect();
   };
 
+  const toggleFolder = (folderId) => {
+    setExpandedFolders(prev => ({ ...prev, [folderId]: !prev[folderId] }));
+  };
+
+  const rootNotes = notes.filter(n => !n.folder_id);
+
+  const NoteItem = ({ note }) => (
+    <div
+      key={note.id}
+      onClick={() => selectMode ? toggleSelect(note.id) : onSelectNote(note)}
+      className={`flex items-center gap-2 px-4 py-3 cursor-pointer border-b border-[#e0e0e0] transition ${activeNoteId === note.id && !selectMode ? 'bg-[#ffe0b2]' : 'hover:bg-[#e8e8e8]'} ${selected.includes(note.id) ? 'bg-red-50' : ''}`}
+    >
+      {selectMode && (
+        <div className="text-red-500 shrink-0">
+          {selected.includes(note.id) ? <CheckSquare size={16} /> : <Square size={16} />}
+        </div>
+      )}
+      <div className="flex-1 min-w-0">
+        <h3 className="font-medium text-sm truncate">{note.title}</h3>
+        <p className="text-xs text-gray-500 mt-0.5">{new Date(note.updated_at).toLocaleDateString()}</p>
+      </div>
+    </div>
+  );
+
   return (
-    <div className="w-full bg-[#f3f3f3] md:border-r border-[#e0e0e0] flex flex-col h-full">
+    <div className="w-full bg-[#f3f3f3] md:border-r border-[#e0e0e0] flex flex-col h-full relative">
       <div className="p-4 flex justify-between items-center border-b border-[#e0e0e0]">
         {showBack ? (
           <button onClick={onBack} className="flex items-center gap-1 text-gray-500 hover:text-black text-sm font-medium">
@@ -41,7 +74,10 @@ export default function Sidebar({ notes, activeNoteId, onSelectNote, onCreateNot
           <button onClick={() => { setSelectMode(s => !s); setSelected([]); }} className={`p-1 rounded transition ${selectMode ? 'text-red-500 bg-red-50' : 'text-gray-500 hover:bg-gray-200'}`} title="Select Notes">
             <CheckSquare size={18} />
           </button>
-          <button onClick={onCreateNote} className="text-gray-500 hover:text-black transition p-1 rounded hover:bg-gray-200" title="New Note">
+          <button onClick={() => setShowFolderModal(true)} className="text-gray-500 hover:text-black transition p-1 rounded hover:bg-gray-200" title="New Folder">
+            <FolderPlus size={18} />
+          </button>
+          <button onClick={() => onCreateNote(null)} className="text-gray-500 hover:text-black transition p-1 rounded hover:bg-gray-200" title="New Note">
             <Edit2 size={18} />
           </button>
         </div>
@@ -60,25 +96,85 @@ export default function Sidebar({ notes, activeNoteId, onSelectNote, onCreateNot
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto">
-        {notes.map(note => (
-          <div
-            key={note.id}
-            onClick={() => selectMode ? toggleSelect(note.id) : onSelectNote(note)}
-            className={`flex items-center gap-2 p-4 cursor-pointer border-b border-[#e0e0e0] transition ${activeNoteId === note.id && !selectMode ? 'bg-[#ffe0b2]' : 'hover:bg-[#e8e8e8]'} ${selected.includes(note.id) ? 'bg-red-50' : ''}`}
-          >
-            {selectMode && (
-              <div className="text-red-500 shrink-0">
-                {selected.includes(note.id) ? <CheckSquare size={16} /> : <Square size={16} />}
+      <div className="flex-1 overflow-y-auto pb-20">
+        {rootNotes.map(note => <NoteItem key={note.id} note={note} />)}
+        
+        {folders.map(folder => {
+          const folderNotes = notes.filter(n => n.folder_id === folder.id);
+          const isExpanded = expandedFolders[folder.id];
+          return (
+            <div key={folder.id} className="border-b border-[#e0e0e0]">
+              <div 
+                onClick={() => toggleFolder(folder.id)}
+                className="flex items-center justify-between p-3 bg-gray-100 cursor-pointer hover:bg-gray-200 transition"
+              >
+                <div className="flex items-center gap-2 text-gray-700 font-medium text-sm">
+                  {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                  <Folder size={16} className="text-blue-500" />
+                  {folder.name} <span className="text-xs text-gray-400 font-normal">({folderNotes.length})</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); onCreateNote(folder.id); }} 
+                    className="p-1 text-gray-400 hover:text-black rounded" title="New Note in Folder">
+                    <Edit2 size={14} />
+                  </button>
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); if(window.confirm("Delete folder and move its notes to root?")) onDeleteFolder(folder.id); }} 
+                    className="p-1 text-gray-400 hover:text-red-500 rounded" title="Delete Folder">
+                    <Trash2 size={14} />
+                  </button>
+                </div>
               </div>
-            )}
-            <div className="flex-1 min-w-0">
-              <h3 className="font-medium text-sm truncate">{note.title}</h3>
-              <p className="text-xs text-gray-500 mt-0.5">{new Date(note.updated_at).toLocaleDateString()}</p>
+              {isExpanded && (
+                <div className="pl-4 bg-[#f9f9f9]">
+                  {folderNotes.length === 0 ? (
+                    <div className="p-4 text-xs text-gray-400">Empty Folder</div>
+                  ) : (
+                    folderNotes.map(note => <NoteItem key={note.id} note={note} />)
+                  )}
+                </div>
+              )}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
+
+      {showFolderModal && (
+        <div className="absolute inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
+            <div className="p-4 border-b border-gray-100">
+              <h3 className="font-semibold text-gray-800 text-sm">Create New Folder</h3>
+            </div>
+            <form onSubmit={handleCreateFolderSubmit} className="p-4 flex flex-col gap-4">
+              <input
+                autoFocus
+                type="text"
+                placeholder="Folder Name"
+                value={newFolderName}
+                onChange={e => setNewFolderName(e.target.value)}
+                className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition"
+              />
+              <div className="flex justify-end gap-2">
+                <button 
+                  type="button" 
+                  onClick={() => { setShowFolderModal(false); setNewFolderName(""); }}
+                  className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit"
+                  disabled={!newFolderName.trim()}
+                  className="px-4 py-2 text-sm font-medium bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition disabled:opacity-50"
+                >
+                  Create
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

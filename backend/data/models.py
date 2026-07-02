@@ -1,9 +1,15 @@
 # Rule: Max 200 lines per file — split if exceeded
 # MEMORY: SQLAlchemy Models
 
-from sqlalchemy import Column, Integer, String, Text, DateTime, Float, Boolean
+from sqlalchemy import Column, Integer, String, Text, DateTime, Float, Boolean, ForeignKey
 from sqlalchemy.sql import func
 from .database import Base
+
+class Folder(Base):
+    __tablename__ = "folders"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, index=True, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 class Note(Base):
     __tablename__ = "notes"
@@ -11,6 +17,7 @@ class Note(Base):
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String, index=True, default="Untitled Note")
     content = Column(Text, nullable=False)
+    folder_id = Column(Integer, ForeignKey("folders.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now(), server_default=func.now())
 

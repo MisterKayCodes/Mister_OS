@@ -182,10 +182,10 @@ Only output these commands if the user is explicitly making a purchase or statin
             # Process [LOG_EXPENSE: ...]
             expense_matches = re.findall(r"\[LOG_EXPENSE:\s*(.+?)\]", ai_reply)
             for cmd_str in expense_matches:
-                today_title = datetime.now().strftime("%B %d, %Y")
-                note = db.query(models.Note).filter(models.Note.title.like(f"%{today_title}%")).first()
+                ledger_title = "Finance Ledger"
+                note = db.query(models.Note).filter(models.Note.title == ledger_title).first()
                 if not note:
-                    note = models.Note(title=today_title, content="")
+                    note = models.Note(title=ledger_title, content="")
                     db.add(note)
                     db.commit()
                     db.refresh(note)
@@ -208,11 +208,19 @@ Only output these commands if the user is explicitly making a purchase or statin
             db.refresh(db_ai_msg)
             
             return schemas.ChatMessageResponse(
-                id=db_ai_msg.id, role=db_ai_msg.role, content=db_ai_msg.content, created_at=db_ai_msg.created_at
+                id=db_ai_msg.id, role=db_ai_msg.role, content=db_ai_msg.content, session_id=session_id, created_at=db_ai_msg.created_at
             )
         except Exception as e:
             print(f"Exception in Omni-Chat: {str(e)}")
             raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/chat-sessions", response_model=list[schemas.ChatSessionResponse])
+def get_chat_sessions(db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
+    return db.query(models.ChatSession).order_by(models.ChatSession.last_active.desc()).all()
+
+@router.get("/chat-sessions/{session_id}", response_model=list[schemas.ChatMessageResponse])
+def get_chat_messages(session_id: int, db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
+    return db.query(models.ChatMessage).filter(models.ChatMessage.session_id == session_id).order_by(models.ChatMessage.id.asc()).all()
 
 @router.post("/finance-insights", response_model=schemas.FinanceInsightsResponse)
 async def finance_insights(db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):

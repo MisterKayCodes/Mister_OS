@@ -8,13 +8,14 @@ import ChatAnalyzer from '../../components/features/ChatAnalyzer';
 import FinanceApp from '../../pages/Finance';
 import OmniChat from '../../components/features/OmniChat';
 import SecurityModal from '../../components/features/SecurityModal';
-import { fetchNotesApi, createNoteApi, saveNoteApi, analyzeChatApi, deleteNotesApi } from '../../utils/api';
+import { fetchNotesApi, createNoteApi, saveNoteApi, analyzeChatApi, deleteNotesApi, getFoldersApi, createFolderApi, deleteFolderApi } from '../../utils/api';
 import { useToast } from '../../context/ToastContext';
 
 export default function Home() {
   const [token, setToken] = useState(localStorage.getItem("master_token") || "");
   const [isAuthenticated, setIsAuthenticated] = useState(!!token);
   const [notes, setNotes] = useState([]);
+  const [folders, setFolders] = useState([]);
   const [activeNote, setActiveNote] = useState(null);
   const [viewMode, setViewMode] = useState('editor');
   const [content, setContent] = useState("");
@@ -28,9 +29,13 @@ export default function Home() {
 
   const fetchNotes = async () => {
     try {
-      const data = await fetchNotesApi(token);
-      setNotes(data);
-      if (data.length > 0 && !activeNote) selectNote(data[0]);
+      const [notesData, foldersData] = await Promise.all([
+        fetchNotesApi(token),
+        getFoldersApi(token)
+      ]);
+      setNotes(notesData);
+      setFolders(foldersData);
+      if (notesData.length > 0 && !activeNote) selectNote(notesData[0]);
     } catch (err) {
       if (err.message === "Invalid Master Token") {
         setIsAuthenticated(false);
@@ -46,13 +51,35 @@ export default function Home() {
     setIsAuthenticated(true);
   };
 
-  const createNote = async () => {
+  const createNote = async (folderId = null) => {
     try {
-      const newNote = await createNoteApi(token);
+      const newNote = await createNoteApi(token, folderId);
       setNotes([newNote, ...notes]);
       selectNote(newNote);
     } catch (err) {
       showToast("Failed to create note: " + err.message, "error");
+    }
+  };
+
+  const handleCreateFolder = async (name) => {
+    try {
+      const newFolder = await createFolderApi(name, token);
+      setFolders([...folders, newFolder]);
+      showToast("Folder created", "success");
+    } catch (err) {
+      showToast(err.message, "error");
+    }
+  };
+
+  const handleDeleteFolder = async (id) => {
+    try {
+      await deleteFolderApi(id, token);
+      setFolders(folders.filter(f => f.id !== id));
+      // Notes get moved to root in backend, so refetch notes
+      fetchNotes();
+      showToast("Folder deleted", "success");
+    } catch (err) {
+      showToast(err.message, "error");
     }
   };
 
@@ -64,12 +91,11 @@ export default function Home() {
     setViewMode('editor');
   };
 
-  // Auto-save content
   useEffect(() => {
     if (!activeNote) return;
     const timer = setTimeout(() => {
       if (content !== activeNote.content || title !== activeNote.title) {
-        saveNoteApi(activeNote.id, content, token, title).then(fetchNotes);
+        saveNoteApi(activeNote.id, content, token, title, activeNote.folder_id).then(fetchNotes);
       }
     }, 1000);
     return () => clearTimeout(timer);
@@ -121,9 +147,12 @@ export default function Home() {
       <div className={`w-full md:w-72 shrink-0 ${showSidebar ? 'flex' : 'hidden md:flex'} flex-col h-full`}>
         <Sidebar
           notes={notes}
+          folders={folders}
           activeNoteId={activeNote?.id}
           onSelectNote={selectNote}
           onCreateNote={createNote}
+          onCreateFolder={handleCreateFolder}
+          onDeleteFolder={handleDeleteFolder}
           onViewExpenses={viewFinance}
           onOpenOmniBrain={() => { setViewMode('omnichat'); setActiveNote(null); }}
           onOpenSecurity={() => setShowSecurity(true)}

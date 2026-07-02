@@ -10,20 +10,20 @@ export const fetchNotesApi = async (token) => {
   return await res.json();
 };
 
-export const createNoteApi = async (token) => {
+export const createNoteApi = async (token, folderId = null) => {
   const res = await fetch(`${API_BASE}/`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-Master-Token": token },
-    body: JSON.stringify({ content: "New Note\n\n(Tip: Type /spend 500 Coffee to log an expense!)", title: "Untitled Note" })
+    body: JSON.stringify({ content: "New Note\n\n(Tip: Type /spend 500 Coffee to log an expense!)", title: "Untitled Note", folder_id: folderId })
   });
   return await res.json();
 };
 
-export const saveNoteApi = async (id, content, token, title) => {
+export const saveNoteApi = async (id, content, token, title, folderId = null) => {
   await fetch(`${API_BASE}/${id}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json", "X-Master-Token": token },
-    body: JSON.stringify({ content, title })
+    body: JSON.stringify({ content, title, folder_id: folderId })
   });
 };
 
@@ -117,5 +117,42 @@ export const deleteSessionApi = async (sessionId, token) => {
     headers: { "X-Master-Token": token }
   });
   if (!res.ok) throw new Error("Failed to delete session");
+  return await res.json();
+};
+
+export const getFoldersApi = async (token) => {
+  const res = await fetch(`${API_BASE}/folders`, { headers: { "X-Master-Token": token } });
+  if (!res.ok) throw new Error("Failed to fetch folders");
+  return await res.json();
+};
+
+export const createFolderApi = async (name, token) => {
+  const res = await fetch(`${API_BASE}/folders`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Master-Token": token },
+    body: JSON.stringify({ name })
+  });
+  if (!res.ok) throw new Error("Failed to create folder");
+  return await res.json();
+};
+
+export const deleteFolderApi = async (folderId, token) => {
+  const res = await fetch(`${API_BASE}/folders/${folderId}`, {
+    method: "DELETE",
+    headers: { "X-Master-Token": token }
+  });
+  if (!res.ok) throw new Error("Failed to delete folder");
+  return await res.json();
+};
+
+export const getChatSessionsApi = async (token) => {
+  const res = await fetch(`${AI_BASE}/chat-sessions`, { headers: { "X-Master-Token": token } });
+  if (!res.ok) throw new Error("Failed to fetch chat sessions");
+  return await res.json();
+};
+
+export const getChatMessagesApi = async (sessionId, token) => {
+  const res = await fetch(`${AI_BASE}/chat-sessions/${sessionId}`, { headers: { "X-Master-Token": token } });
+  if (!res.ok) throw new Error("Failed to fetch chat messages");
   return await res.json();
 };

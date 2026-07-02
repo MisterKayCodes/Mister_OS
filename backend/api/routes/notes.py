@@ -125,7 +125,7 @@ def create_note(note: schemas.NoteCreate, db: Session = Depends(database.get_db)
         first_line = note.content.split("\n")[0] if note.content else ""
         title = first_line[:30] if first_line else "Untitled Note"
         
-    db_note = models.Note(title=title, content=note.content)
+    db_note = models.Note(title=title, content=note.content, folder_id=getattr(note, 'folder_id', None))
     db.add(db_note)
     db.commit()
     db.refresh(db_note)
@@ -143,6 +143,34 @@ def read_notes(skip: int = 0, limit: int = 100, db: Session = Depends(database.g
     notes = db.query(models.Note).order_by(models.Note.updated_at.desc()).offset(skip).limit(limit).all()
     return notes
 
+# --- Folders ---
+@router.get("/folders", response_model=List[schemas.FolderResponse])
+def get_folders(db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
+    return db.query(models.Folder).order_by(models.Folder.name.asc()).all()
+
+@router.post("/folders", response_model=schemas.FolderResponse)
+def create_folder(folder: schemas.FolderBase, db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
+    db_folder = db.query(models.Folder).filter(models.Folder.name.ilike(folder.name)).first()
+    if db_folder: raise HTTPException(status_code=400, detail="Folder already exists")
+    db_folder = models.Folder(name=folder.name)
+    db.add(db_folder)
+    db.commit()
+    db.refresh(db_folder)
+    return db_folder
+
+@router.delete("/folders/{folder_id}")
+def delete_folder(folder_id: int, db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
+    folder = db.query(models.Folder).filter(models.Folder.id == folder_id).first()
+    if not folder: raise HTTPException(status_code=404, detail="Folder not found")
+    
+    notes = db.query(models.Note).filter(models.Note.folder_id == folder_id).all()
+    for n in notes:
+        n.folder_id = None
+        
+    db.delete(folder)
+    db.commit()
+    return {"message": "Folder deleted"}
+
 @router.get("/{note_id}", response_model=schemas.NoteResponse)
 def read_note(note_id: int, db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
     note = db.query(models.Note).filter(models.Note.id == note_id).first()
@@ -159,6 +187,8 @@ def update_note(note_id: int, note_update: schemas.NoteUpdate, db: Session = Dep
     db_note.content = note_update.content
     if note_update.title:
         db_note.title = note_update.title
+    if hasattr(note_update, 'folder_id'):
+        db_note.folder_id = note_update.folder_id
         
     db.commit()
     db.refresh(db_note)
@@ -199,7 +229,10 @@ def delete_notes_bulk(req: schemas.BulkDeleteRequest, db: Session = Depends(data
                 pass
             db.delete(db_note)
     db.commit()
-    return {"deleted": len(req.note_ids)}
+    vector.delete_notes_from_vector_db(req.note_ids)
+    return {"message": f"Deleted {len(req.note_ids)} notes"}
+
+
 
 @router.delete("/{note_id}")
 def delete_note(note_id: int, db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):

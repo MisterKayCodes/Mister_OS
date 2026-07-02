@@ -2,9 +2,19 @@ from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime
 
+class FolderBase(BaseModel):
+    name: str
+
+class FolderResponse(FolderBase):
+    id: int
+    created_at: datetime
+    class Config:
+        from_attributes = True
+
 class NoteBase(BaseModel):
     title: Optional[str] = None
     content: str
+    folder_id: Optional[int] = None
 
 class NoteCreate(NoteBase):
     pass
@@ -27,6 +37,7 @@ class ChatMessageBase(BaseModel):
 
 class ChatMessageResponse(ChatMessageBase):
     id: int
+    session_id: int
     created_at: datetime
     class Config:
         from_attributes = True
