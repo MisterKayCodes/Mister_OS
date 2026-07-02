@@ -90,6 +90,16 @@ export const deleteNotesApi = async (noteIds, token) => {
   return await res.json();
 };
 
+export const moveNotesBulkApi = async (noteIds, folderId, token) => {
+  const res = await fetch(`${API_BASE}/move-bulk`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Master-Token": token },
+    body: JSON.stringify({ note_ids: noteIds, folder_id: folderId })
+  });
+  if (!res.ok) throw new Error("Bulk move failed");
+  return await res.json();
+};
+
 export const loginApi = async (password, deviceName) => {
   const res = await fetch(`http://${hostname}:8011/api/auth/login`, {
     method: "POST",

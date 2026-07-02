@@ -232,7 +232,11 @@ def delete_notes_bulk(req: schemas.BulkDeleteRequest, db: Session = Depends(data
     vector.delete_notes_from_vector_db(req.note_ids)
     return {"message": f"Deleted {len(req.note_ids)} notes"}
 
-
+@router.post("/move-bulk")
+def move_notes_bulk(req: schemas.BulkMoveRequest, db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
+    db.query(models.Note).filter(models.Note.id.in_(req.note_ids)).update({models.Note.folder_id: req.folder_id}, synchronize_session=False)
+    db.commit()
+    return {"message": f"Moved {len(req.note_ids)} notes"}
 
 @router.delete("/{note_id}")
 def delete_note(note_id: int, db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):

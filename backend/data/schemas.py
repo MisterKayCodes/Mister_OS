@@ -71,6 +71,10 @@ class TitleGenerateResponse(BaseModel):
 class BulkDeleteRequest(BaseModel):
     note_ids: List[int]
 
+class BulkMoveRequest(BaseModel):
+    note_ids: List[int]
+    folder_id: Optional[int] = None
+
 # --- Finance Schemas ---
 class TransactionResponse(BaseModel):
     id: int

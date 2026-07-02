@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { Edit2, DollarSign, Bot, CheckSquare, Trash2, Square, ChevronLeft, Shield, FolderPlus, Folder, ChevronDown, ChevronRight } from 'lucide-react';
 
-export default function Sidebar({ notes, folders = [], activeNoteId, onSelectNote, onCreateNote, onViewExpenses, onOpenOmniBrain, onOpenSecurity, onDeleteNotes, onBack, showBack, onCreateFolder, onDeleteFolder }) {
+export default function Sidebar({ notes, folders = [], activeNoteId, onSelectNote, onCreateNote, onViewExpenses, onOpenOmniBrain, onOpenSecurity, onDeleteNotes, onBack, showBack, onCreateFolder, onDeleteFolder, onMoveNotes }) {
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState([]);
   const [expandedFolders, setExpandedFolders] = useState({});
   const [showFolderModal, setShowFolderModal] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
+  const [dragHoverId, setDragHoverId] = useState(null);
 
   const handleCreateFolderSubmit = (e) => {
     e.preventDefault();
@@ -27,8 +28,39 @@ export default function Sidebar({ notes, folders = [], activeNoteId, onSelectNot
     clearSelect();
   };
 
+  const handleMoveBulk = (e) => {
+    const val = e.target.value;
+    if (!val || selected.length === 0) return;
+    const targetFolderId = val === "root" ? null : parseInt(val);
+    onMoveNotes(selected, targetFolderId);
+    clearSelect();
+    e.target.value = ""; // reset select
+  };
+
   const toggleFolder = (folderId) => {
     setExpandedFolders(prev => ({ ...prev, [folderId]: !prev[folderId] }));
+  };
+
+  const handleDragStart = (e, noteId) => {
+    e.dataTransfer.setData("noteId", noteId);
+  };
+
+  const handleDrop = (e, folderId) => {
+    e.preventDefault();
+    setDragHoverId(null);
+    const noteId = e.dataTransfer.getData("noteId");
+    if (noteId) {
+      onMoveNotes([parseInt(noteId)], folderId);
+    }
+  };
+
+  const handleDragOver = (e, id) => {
+    e.preventDefault();
+    setDragHoverId(id);
+  };
+  
+  const handleDragLeave = (e) => {
+    setDragHoverId(null);
   };
 
   const rootNotes = notes.filter(n => !n.folder_id);
@@ -36,6 +68,8 @@ export default function Sidebar({ notes, folders = [], activeNoteId, onSelectNot
   const NoteItem = ({ note }) => (
     <div
       key={note.id}
+      draggable
+      onDragStart={(e) => handleDragStart(e, note.id)}
       onClick={() => selectMode ? toggleSelect(note.id) : onSelectNote(note)}
       className={`flex items-center gap-2 px-4 py-3 cursor-pointer border-b border-[#e0e0e0] transition ${activeNoteId === note.id && !selectMode ? 'bg-[#ffe0b2]' : 'hover:bg-[#e8e8e8]'} ${selected.includes(note.id) ? 'bg-red-50' : ''}`}
     >
@@ -84,11 +118,24 @@ export default function Sidebar({ notes, folders = [], activeNoteId, onSelectNot
       </div>
 
       {selectMode && (
-        <div className="flex items-center justify-between px-4 py-2 bg-red-50 border-b border-red-100">
+        <div className="flex items-center justify-between px-4 py-2 bg-red-50 border-b border-red-100 flex-wrap gap-2">
           <button onClick={selectAll} className="text-xs text-red-600 font-medium hover:underline">Select All</button>
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-gray-500">{selected.length} selected</span>
-            <button onClick={handleDelete} disabled={selected.length === 0} className="flex items-center gap-1 text-xs font-medium bg-red-500 text-white px-3 py-1 rounded-full hover:bg-red-600 disabled:opacity-40 transition">
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-500 mr-1">{selected.length} selected</span>
+            
+            <select 
+              onChange={handleMoveBulk}
+              disabled={selected.length === 0}
+              className="text-xs bg-white border border-gray-300 rounded px-2 py-1 text-gray-700 focus:outline-none disabled:opacity-40 max-w-[100px]"
+            >
+              <option value="">Move to...</option>
+              <option value="root">Root</option>
+              {folders.map(f => (
+                <option key={f.id} value={f.id}>{f.name}</option>
+              ))}
+            </select>
+
+            <button onClick={handleDelete} disabled={selected.length === 0} className="flex items-center gap-1 text-xs font-medium bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600 disabled:opacity-40 transition">
               <Trash2 size={12} /> Delete
             </button>
             <button onClick={clearSelect} className="text-xs text-gray-500 hover:underline">Cancel</button>
@@ -97,18 +144,32 @@ export default function Sidebar({ notes, folders = [], activeNoteId, onSelectNot
       )}
 
       <div className="flex-1 overflow-y-auto pb-20">
-        {rootNotes.map(note => <NoteItem key={note.id} note={note} />)}
+        <div 
+          onDrop={(e) => handleDrop(e, null)}
+          onDragOver={(e) => handleDragOver(e, 'root')}
+          onDragLeave={handleDragLeave}
+          className={`${dragHoverId === 'root' ? 'bg-blue-50' : ''} transition-colors min-h-[50px]`}
+        >
+          {rootNotes.map(note => <NoteItem key={note.id} note={note} />)}
+          {rootNotes.length === 0 && (
+            <div className="px-4 py-3 text-xs text-gray-400 italic">No notes in root</div>
+          )}
+        </div>
         
         {folders.map(folder => {
           const folderNotes = notes.filter(n => n.folder_id === folder.id);
           const isExpanded = expandedFolders[folder.id];
+          const isHovered = dragHoverId === folder.id;
           return (
-            <div key={folder.id} className="border-b border-[#e0e0e0]">
+            <div key={folder.id} className={`border-b border-[#e0e0e0] ${isHovered ? 'bg-blue-50' : ''}`}
+                 onDrop={(e) => handleDrop(e, folder.id)}
+                 onDragOver={(e) => handleDragOver(e, folder.id)}
+                 onDragLeave={handleDragLeave}>
               <div 
                 onClick={() => toggleFolder(folder.id)}
                 className="flex items-center justify-between p-3 bg-gray-100 cursor-pointer hover:bg-gray-200 transition"
               >
-                <div className="flex items-center gap-2 text-gray-700 font-medium text-sm">
+                <div className="flex items-center gap-2 text-gray-700 font-medium text-sm pointer-events-none">
                   {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                   <Folder size={16} className="text-blue-500" />
                   {folder.name} <span className="text-xs text-gray-400 font-normal">({folderNotes.length})</span>
@@ -127,7 +188,7 @@ export default function Sidebar({ notes, folders = [], activeNoteId, onSelectNot
                 </div>
               </div>
               {isExpanded && (
-                <div className="pl-4 bg-[#f9f9f9]">
+                <div className="pl-4 bg-[#f9f9f9] min-h-[40px]">
                   {folderNotes.length === 0 ? (
                     <div className="p-4 text-xs text-gray-400">Empty Folder</div>
                   ) : (
@@ -142,7 +203,7 @@ export default function Sidebar({ notes, folders = [], activeNoteId, onSelectNot
 
       {showFolderModal && (
         <div className="absolute inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-[90vw] md:max-w-sm overflow-hidden">
             <div className="p-4 border-b border-gray-100">
               <h3 className="font-semibold text-gray-800 text-sm">Create New Folder</h3>
             </div>

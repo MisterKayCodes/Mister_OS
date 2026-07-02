@@ -8,7 +8,7 @@ import ChatAnalyzer from '../../components/features/ChatAnalyzer';
 import FinanceApp from '../../pages/Finance';
 import OmniChat from '../../components/features/OmniChat';
 import SecurityModal from '../../components/features/SecurityModal';
-import { fetchNotesApi, createNoteApi, saveNoteApi, analyzeChatApi, deleteNotesApi, getFoldersApi, createFolderApi, deleteFolderApi } from '../../utils/api';
+import { fetchNotesApi, createNoteApi, saveNoteApi, analyzeChatApi, deleteNotesApi, getFoldersApi, createFolderApi, deleteFolderApi, moveNotesBulkApi } from '../../utils/api';
 import { useToast } from '../../context/ToastContext';
 
 export default function Home() {
@@ -75,11 +75,20 @@ export default function Home() {
     try {
       await deleteFolderApi(id, token);
       setFolders(folders.filter(f => f.id !== id));
-      // Notes get moved to root in backend, so refetch notes
       fetchNotes();
       showToast("Folder deleted", "success");
     } catch (err) {
       showToast(err.message, "error");
+    }
+  };
+
+  const handleMoveNotes = async (noteIds, folderId) => {
+    try {
+      await moveNotesBulkApi(noteIds, folderId, token);
+      fetchNotes();
+      showToast(`Moved ${noteIds.length} note(s)`, "success");
+    } catch (err) {
+      showToast("Move failed: " + err.message, "error");
     }
   };
 
@@ -153,6 +162,7 @@ export default function Home() {
           onCreateNote={createNote}
           onCreateFolder={handleCreateFolder}
           onDeleteFolder={handleDeleteFolder}
+          onMoveNotes={handleMoveNotes}
           onViewExpenses={viewFinance}
           onOpenOmniBrain={() => { setViewMode('omnichat'); setActiveNote(null); }}
           onOpenSecurity={() => setShowSecurity(true)}
