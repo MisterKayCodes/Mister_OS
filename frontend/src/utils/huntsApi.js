@@ -1,6 +1,7 @@
 // Hunts & Outreach API utilities
-const hostname = window.location.hostname || "localhost";
-const HUNTS_BASE = `http://${hostname}:8011/api/hunts`;
+const fallbackBase = `http://${window.location.hostname || "localhost"}:8011`;
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || fallbackBase;
+const HUNTS_BASE = `${BASE_URL}/api/hunts`;
 
 export const fetchHuntsApi = async (token) => {
   const [channelsRes, adminsRes] = await Promise.all([
@@ -91,7 +92,8 @@ export const generateTemplatesApi = async (transcript, token) => {
 };
 
 // --- Outreach Worker Control (Hits Microservice Port 8001) ---
-const MICROSERVICE_BASE = `http://${hostname}:8001/api/outreach`;
+const fallbackMicroservice = `http://${window.location.hostname || "localhost"}:8001`;
+const MICROSERVICE_BASE = `${import.meta.env.VITE_MICROSERVICE_BASE_URL || fallbackMicroservice}/api/outreach`;
 
 export const startOutreachApi = async () => {
   const res = await fetch(`${MICROSERVICE_BASE}/start`, { method: "POST" });

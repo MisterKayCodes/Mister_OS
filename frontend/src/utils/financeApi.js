@@ -1,7 +1,8 @@
 // Rule: Max 200 lines per file — split if exceeded
-const hostname = window.location.hostname || "localhost";
-const API_BASE = `http://${hostname}:8011/api/finance`;
-const AI_BASE = `http://${hostname}:8011/api/ai`;
+const fallbackBase = `http://${window.location.hostname || "localhost"}:8011`;
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || fallbackBase;
+const API_BASE = `${BASE_URL}/api/finance`;
+const AI_BASE = `${BASE_URL}/api/ai`;
 
 export const getFinanceOverview = async (token) => {
   const res = await fetch(`${API_BASE}/overview`, { headers: { "X-Master-Token": token } });
