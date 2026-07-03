@@ -29,21 +29,22 @@ export default function Home() {
 
       <div className="flex flex-1 overflow-hidden">
         <div className={`w-full md:w-72 shrink-0 ${showSidebar ? 'flex' : 'hidden md:flex'} flex-col h-full`}>
-          <Sidebar
-            notes={state.notes}
-            folders={state.folders}
-            activeNoteId={state.activeNote?.id}
-            onSelectNote={state.selectNote}
-            onCreateNote={state.createNote}
-            onCreateFolder={state.handleCreateFolder}
-            onDeleteFolder={state.handleDeleteFolder}
-            onMoveNotes={state.handleMoveNotes}
-            onViewExpenses={state.viewFinance}
-            onOpenOmniBrain={() => { state.setViewMode('omnichat'); state.setActiveNote(null); }}
-            onOpenWarRoom={state.viewWarRoom}
-            onOpenSecurity={() => state.setShowSecurity(true)}
-            onDeleteNotes={state.handleDeleteNotes}
-          />
+              <Sidebar 
+                notes={state.notes} 
+                folders={state.folders}
+                activeNoteId={state.activeNote?.id} 
+                onSelectNote={state.selectNote} 
+                onCreateNote={state.createNote}
+                onCreateFolder={state.handleCreateFolder}
+                onDeleteFolder={state.handleDeleteFolder}
+                onViewExpenses={state.viewFinance}
+                onOpenWarRoom={state.viewWarRoom}
+                onOpenOmniBrain={() => { state.setViewMode('omnichat'); state.setActiveNote(null); }}
+                onOpenSecurity={() => state.setShowSecurity(true)}
+                onDeleteNotes={state.handleDeleteNotes}
+                onMoveNotes={state.handleMoveNotes}
+                tokenStats={state.tokenStats}
+              />
         </div>
 
         <div className={`flex-1 flex bg-white relative overflow-hidden ${showSidebar ? 'hidden md:flex' : 'flex'}`}>

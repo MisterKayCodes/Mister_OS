@@ -1,9 +1,10 @@
 import os
 import httpx
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Tuple
 
 class LLMProvider:
     GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
+    DEFAULT_MODEL = "llama-3.1-8b-instant"
 
     @classmethod
     def get_api_key(cls) -> str:
@@ -18,12 +19,16 @@ class LLMProvider:
         messages: List[Dict[str, str]], 
         temperature: float = 0.5, 
         max_tokens: int = 1024,
-        model: str = "llama-3.1-8b-instant"
-    ) -> str:
+        model: str = None
+    ) -> Tuple[str, Dict]:
         """
-        Sends a raw payload to the LLM and returns the raw string response.
-        The Brain/Services determine what the messages contain.
+        Sends a raw payload to the LLM.
+        Returns: (text_response, usage_dict)
+        usage_dict contains: prompt_tokens, completion_tokens, total_tokens, model
         """
+        if model is None:
+            model = cls.DEFAULT_MODEL
+
         headers = {
             "Authorization": f"Bearer {cls.get_api_key()}",
             "Content-Type": "application/json"
@@ -39,4 +44,8 @@ class LLMProvider:
             res = await client.post(cls.GROQ_API_URL, headers=headers, json=payload, timeout=30.0)
             res.raise_for_status()
             data = res.json()
-            return data["choices"][0]["message"]["content"]
+            text = data["choices"][0]["message"]["content"]
+            usage = data.get("usage", {})
+            usage["model"] = model
+            return text, usage
+

@@ -20,7 +20,7 @@ class Prompts:
     """
 
     @staticmethod
-    def get_omni_chat_system_prompt(context_text: str, price_context_text: str, pipeline_context: str = "") -> str:
+    def get_omni_chat_system_prompt(context_text: str, price_context_text: str, pipeline_context: str = "", token_context: str = "") -> str:
         pipeline_section = f"""
 
 SALES PIPELINE INTELLIGENCE (Latest Analysis from War Room):
@@ -42,6 +42,8 @@ CONTEXT FROM USER'S NOTES:
 PRICE DB CONTEXT (Current Prices):
 {price_context_text}
 {pipeline_section}
+{token_context}
+
 AUTONOMOUS ACTION CAPABILITIES:
 If the user explicitly tells you they bought something, you must calculate the total price based on the Price DB Context (if available, otherwise estimate or ask), and output a hidden command on a new line to log the expense.
 Command Format: [LOG_EXPENSE: /spend amount description #category @date]

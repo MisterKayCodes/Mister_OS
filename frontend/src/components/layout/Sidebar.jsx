@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Edit2, DollarSign, Bot, CheckSquare, Trash2, Square, ChevronLeft, Shield, FolderPlus, Folder, ChevronDown, ChevronRight, Target } from 'lucide-react';
 
-export default function Sidebar({ notes, folders = [], activeNoteId, onSelectNote, onCreateNote, onViewExpenses, onOpenOmniBrain, onOpenWarRoom, onOpenSecurity, onDeleteNotes, onBack, showBack, onCreateFolder, onDeleteFolder, onMoveNotes }) {
+export default function Sidebar({ notes, folders = [], activeNoteId, onSelectNote, onCreateNote, onViewExpenses, onOpenOmniBrain, onOpenWarRoom, onOpenSecurity, onDeleteNotes, onBack, showBack, onCreateFolder, onDeleteFolder, onMoveNotes, tokenStats }) {
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState([]);
   const [expandedFolders, setExpandedFolders] = useState({});
@@ -94,7 +94,7 @@ export default function Sidebar({ notes, folders = [], activeNoteId, onSelectNot
           </button>
         ) : (
           <div className="flex items-center gap-2">
-            {/* Logo removed to save space */}
+            <span className="font-bold text-gray-800 tracking-tight">Mister OS</span>
           </div>
         )}
         <div className="flex gap-2">
@@ -205,6 +205,40 @@ export default function Sidebar({ notes, folders = [], activeNoteId, onSelectNot
           );
         })}
       </div>
+
+      {/* Token Fuel Gauge */}
+      {tokenStats && (
+        <div className="px-4 py-3 border-t border-[#e0e0e0] bg-white shrink-0 group relative">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[10px] font-semibold tracking-wider text-gray-500 uppercase">Token Budget</span>
+            <span className="text-[10px] font-medium text-gray-600">{tokenStats.percent_used}%</span>
+          </div>
+          <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden flex">
+            <div 
+              className={`h-full rounded-full transition-all duration-1000 ${
+                tokenStats.percent_used > 80 ? 'bg-red-500' : tokenStats.percent_used > 50 ? 'bg-amber-500' : 'bg-green-500'
+              }`}
+              style={{ width: `${Math.min(tokenStats.percent_used, 100)}%` }}
+            />
+          </div>
+          <div className="mt-1 text-[10px] text-gray-400 text-center">
+            {Math.round(tokenStats.daily_total / 1000)}k / {Math.round(tokenStats.daily_limit / 1000)}k today
+          </div>
+
+          {/* Hover Tooltip for Tasks */}
+          {tokenStats.by_task?.length > 0 && (
+            <div className="absolute bottom-full left-4 right-4 mb-2 bg-gray-900 text-white text-[10px] p-2 rounded shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+              <div className="font-medium mb-1 border-b border-gray-700 pb-1">Usage Breakdown</div>
+              {tokenStats.by_task.slice(0, 4).map(t => (
+                <div key={t.task} className="flex justify-between py-0.5">
+                  <span className="text-gray-300">{t.task}</span>
+                  <span>{t.tokens.toLocaleString()}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {showFolderModal && (
         <div className="absolute inset-0 bg-black/40 z-50 flex items-center justify-center p-4">

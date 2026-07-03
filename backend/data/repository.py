@@ -95,7 +95,8 @@ class ChatRepository:
 
     @staticmethod
     def get_history(db: Session, session_id: int, limit: int = 10) -> List[models.ChatMessage]:
-        return db.query(models.ChatMessage).filter(models.ChatMessage.session_id == session_id).order_by(models.ChatMessage.id.asc()).limit(limit).all()
+        messages = db.query(models.ChatMessage).filter(models.ChatMessage.session_id == session_id).order_by(models.ChatMessage.id.desc()).limit(limit).all()
+        return list(reversed(messages))
 
     @staticmethod
     def create_message(db: Session, session_id: int, role: str, content: str) -> models.ChatMessage:

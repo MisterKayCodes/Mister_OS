@@ -48,18 +48,12 @@ export const fetchExpensesApi = async (token) => {
   return await res.json();
 };
 
-export const analyzeChatApi = async (content, token) => {
-  const res = await fetch(`${AI_BASE}/analyze-chat`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "X-Master-Token": token },
-    body: JSON.stringify({ chat_log: content })
+export const fetchTokenStatsApi = async (token) => {
+  const res = await fetch(`${AI_BASE}/token-stats`, {
+    headers: { "X-Master-Token": token }
   });
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.detail || "Analysis failed");
-  }
-  const data = await res.json();
-  return data.analysis;
+  if (!res.ok) throw new Error("Failed to fetch token stats");
+  return await res.json();
 };
 
 export const sendOmniChatApi = async (message, sessionId, token) => {

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { fetchNotesApi, createNoteApi, saveNoteApi, deleteNotesApi, getFoldersApi, createFolderApi, deleteFolderApi, moveNotesBulkApi, cacheNotes, cacheFolders, getCachedNotes, getCachedFolders } from '../../utils/api';
+import { fetchNotesApi, createNoteApi, saveNoteApi, deleteNotesApi, getFoldersApi, createFolderApi, deleteFolderApi, moveNotesBulkApi, fetchTokenStatsApi, cacheNotes, cacheFolders, getCachedNotes, getCachedFolders } from '../../utils/api';
 import { flush, getPendingCount } from '../../utils/offlineQueue';
 import { useToast } from '../../context/ToastContext';
 
@@ -14,6 +14,7 @@ export default function useHomeState() {
   const [title, setTitle] = useState("");
   const [showSecurity, setShowSecurity] = useState(false);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
+  const [tokenStats, setTokenStats] = useState(null);
   const { showToast } = useToast();
 
   // --- Online/Offline Detection ---
@@ -39,7 +40,23 @@ export default function useHomeState() {
     };
   }, [token]);
 
-  useEffect(() => { if (isAuthenticated) fetchNotes(); }, [isAuthenticated]);
+  useEffect(() => { 
+    if (isAuthenticated) {
+      fetchNotes(); 
+      fetchTokenData();
+      const interval = setInterval(fetchTokenData, 5 * 60 * 1000);
+      return () => clearInterval(interval);
+    }
+  }, [isAuthenticated]);
+
+  const fetchTokenData = async () => {
+    try {
+      const stats = await fetchTokenStatsApi(token);
+      setTokenStats(stats);
+    } catch (err) {
+      console.warn("Could not fetch token stats", err);
+    }
+  };
 
   const fetchNotes = async () => {
     try {
@@ -124,7 +141,6 @@ export default function useHomeState() {
     setActiveNote(note);
     setContent(note.content);
     setTitle(note.title || "");
-    setAnalysisResult(null);
     setViewMode('editor');
   };
 
@@ -167,7 +183,7 @@ export default function useHomeState() {
 
   return {
     token, isAuthenticated, notes, folders, activeNote, setActiveNote, viewMode, setViewMode,
-    content, setContent, title, setTitle, showSecurity, setShowSecurity, isOffline,
+    content, setContent, title, setTitle, showSecurity, setShowSecurity, isOffline, tokenStats,
     handleLogin, createNote, handleCreateFolder, handleDeleteFolder, handleMoveNotes,
     selectNote, viewFinance, viewWarRoom, handleDeleteNotes, goBack
   };

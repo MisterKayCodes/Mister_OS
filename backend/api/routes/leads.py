@@ -194,6 +194,19 @@ Here are the transcripts:
             data = res.json()
             content = data["choices"][0]["message"]["content"]
             parsed = json.loads(content)
+            
+            # Extract usage
+            usage = data.get("usage", {})
+            try:
+                db.add(models.TokenUsageLog(
+                    task_name="analyse_all",
+                    prompt_tokens=usage.get("prompt_tokens", 0),
+                    completion_tokens=usage.get("completion_tokens", 0),
+                    total_tokens=usage.get("total_tokens", 0),
+                    model="llama-3.3-70b-versatile"
+                ))
+            except Exception:
+                pass
         except httpx.HTTPStatusError as e:
             raise HTTPException(status_code=500, detail=f"Groq API Error: {e.response.text}")
         except Exception as e:

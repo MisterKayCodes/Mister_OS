@@ -10,7 +10,7 @@ class AIService:
     async def process_omni_chat(db: Session, message: str, session_id: int = None) -> dict:
         """
         The Nervous System for Omni-Brain.
-        Coordinates Vector search, LLM completion, and Finance logging.
+        Coordinates Vector search, LLM completion, Finance logging, and Token tracking.
         """
         # 1. Retrieve Context from Vector DB (Memory)
         relevant_notes = vector.query_relevant_notes(message, n_results=3)
@@ -41,11 +41,39 @@ class AIService:
                 )
         except Exception:
             pass  # Silently skip if table doesn't exist yet
+
+        # 4. Retrieve Today's Token Usage (Budget Awareness)
+        token_context = ""
+        try:
+            from datetime import datetime, timezone
+            from sqlalchemy import func as sqlfunc
+            import os
+            daily_limit = int(os.getenv("GROQ_DAILY_TOKEN_LIMIT", "131072"))
+            now = datetime.now(timezone.utc)
+            day_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+            rows = (
+                db.query(
+                    models.TokenUsageLog.task_name,
+                    sqlfunc.sum(models.TokenUsageLog.total_tokens).label("tokens")
+                )
+                .filter(models.TokenUsageLog.created_at >= day_start)
+                .group_by(models.TokenUsageLog.task_name)
+                .all()
+            )
+            daily_total = sum(int(r.tokens) for r in rows)
+            percent_used = round((daily_total / daily_limit) * 100, 1)
+            task_breakdown = ", ".join([f"{r.task_name}: {int(r.tokens):,}" for r in sorted(rows, key=lambda x: x.tokens, reverse=True)])
+            token_context = (
+                f"TOKEN BUDGET TODAY: {daily_total:,} / {daily_limit:,} tokens used ({percent_used}%)\n"
+                f"Breakdown: {task_breakdown or 'No usage yet'}"
+            )
+        except Exception:
+            pass
+
+        # 5. Build the System Prompt (Brain)
+        system_prompt = Prompts.get_omni_chat_system_prompt(context_text, price_context_text, pipeline_context, token_context)
         
-        # 4. Build the System Prompt (Brain)
-        system_prompt = Prompts.get_omni_chat_system_prompt(context_text, price_context_text, pipeline_context)
-        
-        # 5. Handle Chat Session History (Memory)
+        # 6. Handle Chat Session History (Memory)
         if not session_id:
             db_session = ChatRepository.create_session(db, title=message[:30] + "...")
             session_id = db_session.id
@@ -57,16 +85,29 @@ class AIService:
         for msg in history:
             messages.append({"role": msg.role, "content": msg.content})
             
-        # 5. Call LLM (Eyes/Mouth via Provider)
-        ai_reply = await LLMProvider.generate_completion(messages=messages, temperature=0.7)
+        # 7. Call LLM and capture usage
+        ai_reply, usage = await LLMProvider.generate_completion(messages=messages, temperature=0.7)
         
-        # 6. Intercept Autonomous Commands (Nervous System orchestrates)
+        # 8. Log token usage silently
+        try:
+            db.add(models.TokenUsageLog(
+                task_name="omni_chat",
+                prompt_tokens=usage.get("prompt_tokens", 0),
+                completion_tokens=usage.get("completion_tokens", 0),
+                total_tokens=usage.get("total_tokens", 0),
+                model=usage.get("model", "unknown")
+            ))
+            db.commit()
+        except Exception:
+            pass
+
+        # 9. Intercept Autonomous Commands (Nervous System orchestrates)
         final_reply = FinanceService.execute_autonomous_commands(db, ai_reply)
         
         if not final_reply:
             final_reply = "Done! I've logged that for you."
             
-        # 7. Save Assistant Message (Memory)
+        # 10. Save Assistant Message (Memory)
         db_ai_msg = ChatRepository.create_message(db, session_id, role="assistant", content=final_reply)
         
         return {
@@ -76,3 +117,4 @@ class AIService:
             "session_id": session_id, 
             "created_at": db_ai_msg.created_at
         }
+
