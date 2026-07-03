@@ -321,3 +321,14 @@ class ScrapePitchingPayload(BaseModel):
     last_their_message_at: Optional[datetime] = None
     read_receipt_seen: bool = False
     follow_up_sent: bool = False
+
+class AnalysisReportResponse(BaseModel):
+    id: int
+    working_patterns: str
+    killing_patterns: str
+    pain_points: str
+    top_openers: str
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True

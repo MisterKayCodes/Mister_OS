@@ -7,7 +7,7 @@ import {
 import {
   fetchLeadsApi, createLeadApi, updateLeadApi,
   fetchPendingDraftsApi, approveDraftApi, deleteDraftApi,
-  fetchTranscriptsApi
+  fetchTranscriptsApi, fetchAnalysisApi, runAnalysisApi
 } from '../../utils/api';
 import {
   fetchHuntsApi, fetchOutreachStatsApi, fetchCrmSettingsApi, updateCrmSettingsApi, updateAdminLeadApi,
@@ -21,6 +21,8 @@ function ChatLibraryTab({ token }) {
   const [search, setSearch] = useState('');
   const [expandedId, setExpandedId] = useState(null);
   const [showRules, setShowRules] = useState(false);
+  const [analysis, setAnalysis] = useState(null);
+  const [analysing, setAnalysing] = useState(false);
 
   const RULES = [
     { stage: 'Fresh', color: 'bg-gray-100 text-gray-700', dot: 'bg-gray-400', desc: "Scraped from a hunted channel. No message sent yet. Waiting for the Outreach Worker to fire the first pitch." },
@@ -40,14 +42,30 @@ function ChatLibraryTab({ token }) {
 
 
   useEffect(() => {
-    fetchTranscriptsApi(token).then(data => {
-      setTranscripts(data);
+    Promise.all([
+      fetchTranscriptsApi(token),
+      fetchAnalysisApi(token)
+    ]).then(([tData, aData]) => {
+      setTranscripts(tData);
+      setAnalysis(aData);
       setLoading(false);
     }).catch(e => {
       console.error(e);
       setLoading(false);
     });
   }, [token]);
+
+  const handleAnalyse = async () => {
+    try {
+      setAnalysing(true);
+      const data = await runAnalysisApi(token);
+      setAnalysis(data);
+    } catch (e) {
+      alert("Analysis failed: " + e.message);
+    } finally {
+      setAnalysing(false);
+    }
+  };
 
   const filtered = transcripts.filter(t => 
     t.username.toLowerCase().includes(search.toLowerCase()) || 
@@ -81,11 +99,38 @@ function ChatLibraryTab({ token }) {
           >
             <Shield size={14} /> Rules
           </button>
-          <button className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-bold text-sm shadow-md transition-all flex items-center gap-2 whitespace-nowrap">
-            <Bot size={16} /> Analyse All
+          <button
+            onClick={handleAnalyse}
+            disabled={analysing || transcripts.length === 0}
+            className="bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white px-4 py-2 rounded-lg font-bold text-sm shadow-md transition-all flex items-center gap-2 whitespace-nowrap"
+          >
+            {analysing ? <RefreshCw className="animate-spin" size={16} /> : <Bot size={16} />}
+            {analysing ? "Analysing..." : "Analyse All"}
           </button>
         </div>
       </div>
+
+      {/* Analysis Dashboard */}
+      {analysis && !loading && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="bg-white rounded-xl shadow-sm border border-green-200 p-4">
+            <h3 className="font-bold text-green-700 flex items-center gap-2 mb-2">🟢 What's Working</h3>
+            <div className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed space-y-1" dangerouslySetInnerHTML={{ __html: analysis.working_patterns.replace(/\n/g, '<br/>') }} />
+          </div>
+          <div className="bg-white rounded-xl shadow-sm border border-red-200 p-4">
+            <h3 className="font-bold text-red-700 flex items-center gap-2 mb-2">🔴 What's Killing Conversions</h3>
+            <div className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed space-y-1" dangerouslySetInnerHTML={{ __html: analysis.killing_patterns.replace(/\n/g, '<br/>') }} />
+          </div>
+          <div className="bg-white rounded-xl shadow-sm border border-blue-200 p-4">
+            <h3 className="font-bold text-blue-700 flex items-center gap-2 mb-2">🎯 Pain Point Analysis</h3>
+            <div className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed space-y-1" dangerouslySetInnerHTML={{ __html: analysis.pain_points.replace(/\n/g, '<br/>') }} />
+          </div>
+          <div className="bg-white rounded-xl shadow-sm border border-purple-200 p-4">
+            <h3 className="font-bold text-purple-700 flex items-center gap-2 mb-2">📩 Top Opener Patterns</h3>
+            <div className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed space-y-1" dangerouslySetInnerHTML={{ __html: analysis.top_openers.replace(/\n/g, '<br/>') }} />
+          </div>
+        </div>
+      )}
 
       {/* Rules Modal */}
       {showRules && (

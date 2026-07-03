@@ -138,3 +138,81 @@ def get_chat_transcripts(db: Session = Depends(database.get_db), token: str = De
             "scraped_at": t.scraped_at
         })
     return transcripts
+
+import httpx
+import os
+import json
+
+@router.post("/analyse", response_model=schemas.AnalysisReportResponse)
+async def generate_analysis_report(db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
+    # 1. Fetch all transcripts and lead statuses
+    results = db.query(models.ChatTranscript, models.Lead).join(models.Lead).all()
+    
+    if not results:
+        raise HTTPException(status_code=400, detail="No chat transcripts found to analyse.")
+    
+    # 2. Build the prompt payload
+    chat_data = []
+    for t, l in results:
+        chat_data.append(f"--- LEAD: @{l.username} | STATUS: {l.status} ---\n{t.transcript}")
+    
+    all_chats_text = "\n\n".join(chat_data)
+    
+    prompt = f"""You are a master Sales Coach and Pattern Detector.
+I am providing you with {len(results)} chat transcripts between me (YOU) and various leads. Each lead has an ultimate outcome STATUS (Hot, Dead, Follow-up, Pitching).
+Your job is to read these conversations and identify exact patterns that lead to success (Hot) or failure (Dead).
+
+Return your analysis strictly as a JSON object with EXACTLY these four keys:
+- "working_patterns": A concise, punchy bullet-point list of what specific angles or phrases are getting replies.
+- "killing_patterns": A concise, punchy bullet-point list of where leads are dropping off or going Dead.
+- "pain_points": A brief analysis of any recurring pain points or channel-specific behaviors you noticed.
+- "top_openers": A brief ranking or observation of which initial contact messages worked best.
+
+Ensure the output is 100% pure JSON without any markdown formatting blocks like ```json.
+Here are the transcripts:
+
+{all_chats_text}"""
+
+    # 3. Call Groq
+    api_key = os.getenv("GROQ_API_KEY")
+    if not api_key:
+        raise HTTPException(status_code=500, detail="GROQ_API_KEY not configured")
+        
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        try:
+            res = await client.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={"Authorization": f"Bearer {api_key}"},
+                json={
+                    "model": "llama3-70b-8192",
+                    "messages": [{"role": "user", "content": prompt}],
+                    "temperature": 0.3,
+                    "response_format": {"type": "json_object"}
+                }
+            )
+            res.raise_for_status()
+            data = res.json()
+            content = data["choices"][0]["message"]["content"]
+            parsed = json.loads(content)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"LLM Error: {str(e)}")
+
+    # 4. Save to Database
+    report = models.AnalysisReport(
+        working_patterns=parsed.get("working_patterns", ""),
+        killing_patterns=parsed.get("killing_patterns", ""),
+        pain_points=parsed.get("pain_points", ""),
+        top_openers=parsed.get("top_openers", "")
+    )
+    db.add(report)
+    db.commit()
+    db.refresh(report)
+    
+    return report
+
+@router.get("/analysis", response_model=schemas.AnalysisReportResponse)
+def get_latest_analysis(db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
+    report = db.query(models.AnalysisReport).order_by(models.AnalysisReport.created_at.desc()).first()
+    if not report:
+        raise HTTPException(status_code=404, detail="No analysis found")
+    return report

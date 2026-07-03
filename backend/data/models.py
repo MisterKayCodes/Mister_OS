@@ -5,6 +5,22 @@ from sqlalchemy import Column, Integer, String, Text, DateTime, Float, Boolean, 
 from sqlalchemy.sql import func
 from .database import Base
 
+class SearchLog(Base):
+    __tablename__ = "search_logs"
+    id = Column(Integer, primary_key=True, index=True)
+    query = Column(String, nullable=False)
+    channels_found = Column(Integer, default=0)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+class AnalysisReport(Base):
+    __tablename__ = "analysis_reports"
+    id = Column(Integer, primary_key=True, index=True)
+    working_patterns = Column(Text, nullable=False)
+    killing_patterns = Column(Text, nullable=False)
+    pain_points = Column(Text, nullable=False)
+    top_openers = Column(Text, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
 class Folder(Base):
     __tablename__ = "folders"
     id = Column(Integer, primary_key=True, index=True)

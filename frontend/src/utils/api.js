@@ -250,3 +250,21 @@ export const fetchTranscriptsApi = async (token) => {
   if (!res.ok) throw new Error("Failed to fetch chat transcripts");
   return await res.json();
 };
+
+export const fetchAnalysisApi = async (token) => {
+  const res = await fetch(`http://${hostname}:8011/api/leads/analysis`, {
+    headers: { "X-Master-Token": token }
+  });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error("Failed to fetch analysis");
+  return await res.json();
+};
+
+export const runAnalysisApi = async (token) => {
+  const res = await fetch(`http://${hostname}:8011/api/leads/analyse`, {
+    method: "POST",
+    headers: { "X-Master-Token": token }
+  });
+  if (!res.ok) throw new Error("Failed to run analysis");
+  return await res.json();
+};
