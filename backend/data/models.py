@@ -128,4 +128,89 @@ class PriceLog(Base):
     price = Column(Integer, nullable=False)
     date = Column(DateTime(timezone=True), server_default=func.now())
 
+class Lead(Base):
+    __tablename__ = "leads"
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String, unique=True, index=True, nullable=False)
+    channel_username = Column(String, nullable=True)
+    status = Column(String, default="Cold")
+    score = Column(String, nullable=True)
+    auto_pilot = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now(), server_default=func.now())
+
+class LeadSummary(Base):
+    __tablename__ = "lead_summaries"
+    id = Column(Integer, primary_key=True, index=True)
+    lead_id = Column(Integer, ForeignKey("leads.id"), unique=True, nullable=False)
+    summary = Column(Text, nullable=False)
+    message_count = Column(Integer, default=0)
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now(), server_default=func.now())
+
+class HuntedChannel(Base):
+    __tablename__ = "hunted_channels"
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String, unique=True, index=True, nullable=False)
+    title = Column(String, nullable=True)
+    scanned_at = Column(DateTime(timezone=True), server_default=func.now())
+
+class LeadInteraction(Base):
+    __tablename__ = "lead_interactions"
+    id = Column(Integer, primary_key=True, index=True)
+    lead_id = Column(Integer, ForeignKey("leads.id"), nullable=False)
+    role = Column(String)
+    content = Column(Text)
+    is_draft = Column(Boolean, default=False)
+    timestamp = Column(DateTime(timezone=True), server_default=func.now())
+
+class ScrapedChannel(Base):
+    """A Telegram channel that was found via the Hunt worker."""
+    __tablename__ = "scraped_channels"
+    id = Column(Integer, primary_key=True, index=True)
+    tg_id = Column(String, unique=True, index=True, nullable=False)  # Telegram channel numeric ID
+    username = Column(String, unique=True, index=True, nullable=True)  # @username
+    title = Column(String, nullable=True)
+    members_count = Column(Integer, nullable=True)
+    source_channel = Column(String, nullable=True)  # Which seed channel it was found from
+    status = Column(String, default="pending")  # pending | scanned | dead
+    scanned_at = Column(DateTime(timezone=True), server_default=func.now())
+
+class AdminLead(Base):
+    """An admin username extracted from a scraped channel."""
+    __tablename__ = "admin_leads"
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String, unique=True, index=True, nullable=False)
+    channel_id = Column(Integer, ForeignKey("scraped_channels.id"), nullable=True)
+    source = Column(String, default="description")  # description | posts | manual
+    status = Column(String, default="fresh")  # fresh | outreach_sent | active | dead | closed | manual_review
+    contacted_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+class OutreachLog(Base):
+    """Log of every outreach message sent."""
+    __tablename__ = "outreach_logs"
+    id = Column(Integer, primary_key=True, index=True)
+    admin_lead_id = Column(Integer, ForeignKey("admin_leads.id"), nullable=False)
+    message_variant = Column(Integer, nullable=True)  # Which of the templates was used
+    content = Column(Text, nullable=False)
+    sent_at = Column(DateTime(timezone=True), server_default=func.now())
+
+class OutreachTemplate(Base):
+    """User-created or AI-generated outreach templates."""
+    __tablename__ = "outreach_templates"
+    id = Column(Integer, primary_key=True, index=True)
+    content = Column(Text, nullable=False)  # The template text containing {name}
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+class CrmSettings(Base):
+    """Global CRM settings editable from the UI."""
+    __tablename__ = "crm_settings"
+    id = Column(Integer, primary_key=True, index=True)
+    boss_alert_username = Column(String, default="opozdal96")  # Without @
+    outreach_active = Column(Boolean, default=False)
+    min_delay_minutes = Column(Integer, default=30)
+    max_delay_minutes = Column(Integer, default=120)
+    next_outreach_run = Column(DateTime(timezone=True), nullable=True) # Delay memory
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now(), server_default=func.now())
+
 

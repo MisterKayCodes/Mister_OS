@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Edit2, DollarSign, Bot, CheckSquare, Trash2, Square, ChevronLeft, Shield, FolderPlus, Folder, ChevronDown, ChevronRight } from 'lucide-react';
+import { Edit2, DollarSign, Bot, CheckSquare, Trash2, Square, ChevronLeft, Shield, FolderPlus, Folder, ChevronDown, ChevronRight, Target } from 'lucide-react';
 
-export default function Sidebar({ notes, folders = [], activeNoteId, onSelectNote, onCreateNote, onViewExpenses, onOpenOmniBrain, onOpenSecurity, onDeleteNotes, onBack, showBack, onCreateFolder, onDeleteFolder, onMoveNotes }) {
+export default function Sidebar({ notes, folders = [], activeNoteId, onSelectNote, onCreateNote, onViewExpenses, onOpenOmniBrain, onOpenWarRoom, onOpenSecurity, onDeleteNotes, onBack, showBack, onCreateFolder, onDeleteFolder, onMoveNotes }) {
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState([]);
   const [expandedFolders, setExpandedFolders] = useState({});
@@ -93,7 +93,9 @@ export default function Sidebar({ notes, folders = [], activeNoteId, onSelectNot
             <ChevronLeft size={18} /> Back
           </button>
         ) : (
-          <h1 className="font-semibold text-lg text-gray-700">Mister OS</h1>
+          <div className="flex items-center gap-2">
+            {/* Logo removed to save space */}
+          </div>
         )}
         <div className="flex gap-2">
           <button onClick={onOpenSecurity} className="text-gray-500 hover:text-red-600 transition p-1 rounded hover:bg-red-50" title="Security & Devices">
@@ -104,6 +106,9 @@ export default function Sidebar({ notes, folders = [], activeNoteId, onSelectNot
           </button>
           <button onClick={onViewExpenses} className="text-gray-500 hover:text-black transition p-1 rounded hover:bg-gray-200" title="View Expenses">
             <DollarSign size={18} />
+          </button>
+          <button onClick={onOpenWarRoom} className="text-red-500 hover:bg-red-50 transition p-1 rounded" title="War Room">
+            <Target size={18} />
           </button>
           <button onClick={() => { setSelectMode(s => !s); setSelected([]); }} className={`p-1 rounded transition ${selectMode ? 'text-red-500 bg-red-50' : 'text-gray-500 hover:bg-gray-200'}`} title="Select Notes">
             <CheckSquare size={18} />

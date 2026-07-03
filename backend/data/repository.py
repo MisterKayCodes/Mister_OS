@@ -104,3 +104,38 @@ class ChatRepository:
         db.commit()
         db.refresh(msg)
         return msg
+
+class LeadRepository:
+    @staticmethod
+    def get_all(db: Session, skip: int = 0, limit: int = 100) -> List[models.Lead]:
+        return db.query(models.Lead).order_by(models.Lead.updated_at.desc()).offset(skip).limit(limit).all()
+
+    @staticmethod
+    def get_by_username(db: Session, username: str) -> Optional[models.Lead]:
+        return db.query(models.Lead).filter(models.Lead.username == username).first()
+
+    @staticmethod
+    def create(db: Session, lead_data: dict) -> models.Lead:
+        lead = models.Lead(**lead_data)
+        db.add(lead)
+        db.commit()
+        db.refresh(lead)
+        return lead
+    
+    @staticmethod
+    def update(db: Session, lead: models.Lead) -> models.Lead:
+        db.commit()
+        db.refresh(lead)
+        return lead
+
+    @staticmethod
+    def check_if_hunted(db: Session, username: str) -> bool:
+        return db.query(models.HuntedChannel).filter(models.HuntedChannel.username == username).first() is not None
+
+    @staticmethod
+    def mark_hunted(db: Session, username: str, title: str = None) -> models.HuntedChannel:
+        hc = models.HuntedChannel(username=username, title=title)
+        db.add(hc)
+        db.commit()
+        db.refresh(hc)
+        return hc

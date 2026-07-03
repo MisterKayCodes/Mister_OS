@@ -5,3 +5,6 @@ pydantic
 python-dotenv
 httpx
 chromadb
+alembic
+Telethon==1.33.1
+requests==2.31.0

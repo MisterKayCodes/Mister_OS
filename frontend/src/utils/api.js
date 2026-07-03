@@ -1,8 +1,18 @@
 // Rule: Max 200 lines per file — split if exceeded
 // Use the actual device IP to allow mobile connections
+import { enqueue } from './offlineQueue';
+
 const hostname = window.location.hostname || "localhost";
 const API_BASE = `http://${hostname}:8011/api/notes`;
 const AI_BASE = `http://${hostname}:8011/api/ai`;
+
+const NOTES_CACHE_KEY = 'mister_notes_cache';
+const FOLDERS_CACHE_KEY = 'mister_folders_cache';
+
+export const cacheNotes = (notes) => localStorage.setItem(NOTES_CACHE_KEY, JSON.stringify(notes));
+export const cacheFolders = (folders) => localStorage.setItem(FOLDERS_CACHE_KEY, JSON.stringify(folders));
+export const getCachedNotes = () => { try { return JSON.parse(localStorage.getItem(NOTES_CACHE_KEY) || 'null'); } catch { return null; } };
+export const getCachedFolders = () => { try { return JSON.parse(localStorage.getItem(FOLDERS_CACHE_KEY) || 'null'); } catch { return null; } };
 
 export const fetchNotesApi = async (token) => {
   const res = await fetch(`${API_BASE}/`, { headers: { "X-Master-Token": token } });
@@ -20,11 +30,16 @@ export const createNoteApi = async (token, folderId = null) => {
 };
 
 export const saveNoteApi = async (id, content, token, title, folderId = null) => {
-  await fetch(`${API_BASE}/${id}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json", "X-Master-Token": token },
-    body: JSON.stringify({ content, title, folder_id: folderId })
-  });
+  try {
+    await fetch(`${API_BASE}/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "X-Master-Token": token },
+      body: JSON.stringify({ content, title, folder_id: folderId })
+    });
+  } catch (err) {
+    // Offline: queue the save for later
+    enqueue({ type: 'save_note', url: `${API_BASE}/${id}`, method: 'PUT', body: { content, title, folder_id: folderId } });
+  }
 };
 
 export const fetchExpensesApi = async (token) => {
@@ -164,5 +179,66 @@ export const getChatSessionsApi = async (token) => {
 export const getChatMessagesApi = async (sessionId, token) => {
   const res = await fetch(`${AI_BASE}/chat-sessions/${sessionId}`, { headers: { "X-Master-Token": token } });
   if (!res.ok) throw new Error("Failed to fetch chat messages");
+  return await res.json();
+};
+
+// --- Leads API ---
+export const fetchLeadsApi = async (token) => {
+  const res = await fetch(`http://${hostname}:8011/api/leads/`, { headers: { "X-Master-Token": token } });
+  if (!res.ok) throw new Error("Failed to fetch leads");
+  return await res.json();
+};
+
+export const createLeadApi = async (username, token) => {
+  const res = await fetch(`http://${hostname}:8011/api/leads/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Master-Token": token },
+    body: JSON.stringify({ username, status: 'Cold' })
+  });
+  if (!res.ok) throw new Error("Failed to create lead");
+  return await res.json();
+};
+
+export const updateLeadApi = async (id, data, token) => {
+  const res = await fetch(`http://${hostname}:8011/api/leads/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", "X-Master-Token": token },
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) throw new Error("Failed to update lead");
+  return await res.json();
+};
+
+export const fetchPendingDraftsApi = async (token) => {
+  const res = await fetch(`http://${hostname}:8011/api/leads/drafts/pending`, { headers: { "X-Master-Token": token } });
+  if (!res.ok) throw new Error("Failed to fetch drafts");
+  return await res.json();
+};
+
+export const approveDraftApi = async (id, token) => {
+  const res = await fetch(`http://${hostname}:8011/api/leads/drafts/${id}/approve`, {
+    method: "POST",
+    headers: { "X-Master-Token": token }
+  });
+  if (!res.ok) throw new Error("Failed to approve draft");
+  return await res.json();
+};
+
+export const updateDraftApi = async (id, content, token) => {
+  const res = await fetch(`http://${hostname}:8011/api/leads/drafts/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", "X-Master-Token": token },
+    body: JSON.stringify({ content, role: "assistant", lead_id: 0 }) // lead_id not used in update but schema requires it
+  });
+  if (!res.ok) throw new Error("Failed to update draft");
+  return await res.json();
+};
+
+export const deleteDraftApi = async (id, token) => {
+  const res = await fetch(`http://${hostname}:8011/api/leads/drafts/${id}`, {
+    method: "DELETE",
+    headers: { "X-Master-Token": token }
+  });
+  if (!res.ok) throw new Error("Failed to delete draft");
   return await res.json();
 };

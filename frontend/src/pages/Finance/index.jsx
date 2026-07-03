@@ -54,12 +54,12 @@ export default function FinanceApp({ token, onBack }) {
       </div>
 
       {/* Tabs Nav */}
-      <div className="bg-white px-4 md:px-6 border-b border-gray-200 flex gap-5 overflow-x-auto shrink-0">
+      <div className="bg-white px-4 md:px-6 border-b border-gray-200 flex flex-wrap md:flex-nowrap gap-2 md:gap-5 shrink-0">
         {TABS.map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`py-3 text-sm font-medium border-b-2 transition whitespace-nowrap capitalize ${
+            className={`py-2 md:py-3 text-xs md:text-sm font-medium border-b-2 transition whitespace-nowrap capitalize ${
               activeTab === tab ? 'border-purple-600 text-purple-700' : 'border-transparent text-gray-500 hover:text-gray-800'
             }`}
           >
