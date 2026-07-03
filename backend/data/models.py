@@ -202,6 +202,14 @@ class OutreachTemplate(Base):
     content = Column(Text, nullable=False)  # The template text containing {name}
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
+class ChatTranscript(Base):
+    """Stores full scraped chat history for AI analysis."""
+    __tablename__ = "chat_transcripts"
+    id = Column(Integer, primary_key=True, index=True)
+    lead_id = Column(Integer, ForeignKey("leads.id"), nullable=False)
+    transcript = Column(Text, nullable=False)
+    scraped_at = Column(DateTime(timezone=True), server_default=func.now())
+
 class CrmSettings(Base):
     """Global CRM settings editable from the UI."""
     __tablename__ = "crm_settings"

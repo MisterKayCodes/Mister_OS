@@ -20,6 +20,10 @@ async def get_master_token(
 ):
     if not api_key_header:
         raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Missing Master Token")
+        
+    # Allow static master token for backend microservice scripts (Server-to-Server)
+    if api_key_header == os.getenv("MASTER_TOKEN"):
+        return api_key_header
     
     session = db.query(models.AuthSession).filter(models.AuthSession.token == api_key_header).first()
     if session:

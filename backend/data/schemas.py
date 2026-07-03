@@ -302,4 +302,17 @@ class OutreachStatsResponse(BaseModel):
     outreach_active: bool
     next_run: Optional[datetime] = None
 
+class ChatTranscriptBase(BaseModel):
+    transcript: str
 
+class ChatTranscriptResponse(ChatTranscriptBase):
+    id: int
+    lead_id: int
+    scraped_at: datetime
+    class Config: from_attributes = True
+
+class ScrapePitchingPayload(BaseModel):
+    username: str
+    profile_name: str
+    status: str
+    transcript: str

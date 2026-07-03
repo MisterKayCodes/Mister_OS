@@ -88,3 +88,29 @@ def delete_draft(interaction_id: int, db: Session = Depends(database.get_db), to
     db.delete(interaction)
     db.commit()
     return {"status": "deleted"}
+
+@router.post("/scrape-pitching", response_model=schemas.ChatTranscriptResponse)
+def save_scraped_pitching_chat(req: schemas.ScrapePitchingPayload, db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
+    # Find or create lead
+    lead = db.query(models.Lead).filter(models.Lead.username == req.username).first()
+    if not lead:
+        lead = models.Lead(username=req.username, channel_username=req.profile_name, status=req.status)
+        db.add(lead)
+        db.commit()
+        db.refresh(lead)
+    else:
+        lead.status = req.status
+        lead.channel_username = req.profile_name
+        db.commit()
+
+    # Save transcript
+    transcript = db.query(models.ChatTranscript).filter(models.ChatTranscript.lead_id == lead.id).first()
+    if transcript:
+        transcript.transcript = req.transcript
+    else:
+        transcript = models.ChatTranscript(lead_id=lead.id, transcript=req.transcript)
+        db.add(transcript)
+    
+    db.commit()
+    db.refresh(transcript)
+    return transcript
