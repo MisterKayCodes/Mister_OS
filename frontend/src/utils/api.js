@@ -193,7 +193,7 @@ export const createLeadApi = async (username, token) => {
   const res = await fetch(`http://${hostname}:8011/api/leads/`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-Master-Token": token },
-    body: JSON.stringify({ username, status: 'Cold' })
+    body: JSON.stringify({ username, status: 'Pitching' })
   });
   if (!res.ok) throw new Error("Failed to create lead");
   return await res.json();

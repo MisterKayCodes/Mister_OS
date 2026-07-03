@@ -133,7 +133,7 @@ class Lead(Base):
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True, index=True, nullable=False)
     channel_username = Column(String, nullable=True)
-    status = Column(String, default="Cold")
+    status = Column(String, default="Pitching")  # Pitching | Hot | Cold
     score = Column(String, nullable=True)
     auto_pilot = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

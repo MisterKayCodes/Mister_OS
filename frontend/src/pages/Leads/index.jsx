@@ -408,7 +408,7 @@ function OutreachTab({ token }) {
 }
 
 function ActiveTab({ leads, drafts, token, onLeadsUpdate, onDraftsUpdate }) {
-  const columns = ['Cold', 'Warm', 'Hot', 'Closed', 'Dead'];
+  const columns = ['Pitching', 'Hot', 'Cold'];
 
   const handleUpdateStatus = async (id, status) => {
     try {
