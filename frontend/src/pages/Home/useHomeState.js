@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { fetchNotesApi, createNoteApi, saveNoteApi, analyzeChatApi, deleteNotesApi, getFoldersApi, createFolderApi, deleteFolderApi, moveNotesBulkApi, cacheNotes, cacheFolders, getCachedNotes, getCachedFolders } from '../../utils/api';
+import { fetchNotesApi, createNoteApi, saveNoteApi, deleteNotesApi, getFoldersApi, createFolderApi, deleteFolderApi, moveNotesBulkApi, cacheNotes, cacheFolders, getCachedNotes, getCachedFolders } from '../../utils/api';
 import { flush, getPendingCount } from '../../utils/offlineQueue';
 import { useToast } from '../../context/ToastContext';
 
@@ -12,8 +12,6 @@ export default function useHomeState() {
   const [viewMode, setViewMode] = useState('editor');
   const [content, setContent] = useState("");
   const [title, setTitle] = useState("");
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [analysisResult, setAnalysisResult] = useState(null);
   const [showSecurity, setShowSecurity] = useState(false);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const { showToast } = useToast();
@@ -140,21 +138,6 @@ export default function useHomeState() {
     return () => clearTimeout(timer);
   }, [content, title]);
 
-  const analyzeChat = async () => {
-    if (!content.trim()) return;
-    setIsAnalyzing(true);
-    setAnalysisResult(null);
-    try {
-      const result = await analyzeChatApi(content, token);
-      setAnalysisResult(result);
-      showToast("Pitch analyzed!", "success");
-    } catch (err) {
-      showToast("Error: " + err.message, "error");
-    } finally {
-      setIsAnalyzing(false);
-    }
-  };
-
   const viewFinance = () => {
     setViewMode('finance');
     setActiveNote(null);
@@ -184,9 +167,8 @@ export default function useHomeState() {
 
   return {
     token, isAuthenticated, notes, folders, activeNote, setActiveNote, viewMode, setViewMode,
-    content, setContent, title, setTitle, isAnalyzing, analysisResult, setAnalysisResult,
-    showSecurity, setShowSecurity, isOffline,
+    content, setContent, title, setTitle, showSecurity, setShowSecurity, isOffline,
     handleLogin, createNote, handleCreateFolder, handleDeleteFolder, handleMoveNotes,
-    selectNote, analyzeChat, viewFinance, viewWarRoom, handleDeleteNotes, goBack
+    selectNote, viewFinance, viewWarRoom, handleDeleteNotes, goBack
   };
 }

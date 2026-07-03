@@ -3,7 +3,7 @@ import { Edit2 } from 'lucide-react';
 import Sidebar from '../../components/layout/Sidebar';
 import AuthScreen from '../../components/layout/AuthScreen';
 import Editor from '../../components/features/Editor';
-import ChatAnalyzer from '../../components/features/ChatAnalyzer';
+
 import FinanceApp from '../../pages/Finance';
 import LeadsApp from '../../pages/Leads';
 import OmniChat from '../../components/features/OmniChat';
@@ -61,14 +61,9 @@ export default function Home() {
                 title={state.title}
                 setTitle={state.setTitle}
                 activeNote={state.activeNote}
-                onAnalyze={state.analyzeChat}
-                isAnalyzing={state.isAnalyzing}
                 onBack={state.goBack}
                 token={state.token}
               />
-              <div className="hidden md:block">
-                <ChatAnalyzer result={state.analysisResult} onClose={() => state.setAnalysisResult(null)} />
-              </div>
             </>
           ) : (
             <div className="flex-1 flex items-center justify-center text-gray-400 flex-col gap-4">
@@ -79,9 +74,7 @@ export default function Home() {
         </div>
       </div>
 
-      <div className="md:hidden">
-        <ChatAnalyzer result={state.analysisResult} onClose={() => state.setAnalysisResult(null)} />
-      </div>
+
 
       {state.showSecurity && <SecurityModal token={state.token} onClose={() => state.setShowSecurity(false)} />}
     </div>

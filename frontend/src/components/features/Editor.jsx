@@ -1,10 +1,10 @@
 // Rule: Max 200 lines per file — split if exceeded
 import React, { useState } from 'react';
-import { Sparkles, ChevronLeft, Wand2 } from 'lucide-react';
+import { ChevronLeft, Wand2 } from 'lucide-react';
 import { generateTitleApi } from '../../utils/api';
 import { useToast } from '../../context/ToastContext';
 
-export default function Editor({ content, setContent, title, setTitle, activeNote, onAnalyze, isAnalyzing, onBack, token }) {
+export default function Editor({ content, setContent, title, setTitle, activeNote, onBack, token }) {
   const [isGeneratingTitle, setIsGeneratingTitle] = useState(false);
   const { showToast } = useToast();
 
@@ -30,14 +30,6 @@ export default function Editor({ content, setContent, title, setTitle, activeNot
           <ChevronLeft size={20} /> Back
         </button>
         <div className="ml-auto flex items-center gap-2">
-          <button
-            onClick={onAnalyze}
-            disabled={isAnalyzing}
-            className="flex items-center gap-2 text-sm font-medium bg-black text-white px-4 py-1.5 rounded-full hover:bg-gray-800 transition disabled:opacity-50"
-          >
-            <Sparkles size={16} />
-            {isAnalyzing ? "Analyzing..." : "Analyze Pitch"}
-          </button>
         </div>
       </div>
 

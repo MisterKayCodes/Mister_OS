@@ -80,12 +80,12 @@ def delete_notes_bulk(req: schemas.BulkDeleteRequest, db: Session = Depends(data
         if db_note:
             db.query(models.Expense).filter(models.Expense.note_id == note_id).delete()
             try:
+                # Remove from vector DB (silently ignore if note was never indexed)
                 vector.notes_collection.delete(where={"note_id": note_id})
             except Exception:
                 pass
             db.delete(db_note)
     db.commit()
-    vector.delete_notes_from_vector_db(req.note_ids)
     return {"message": f"Deleted {len(req.note_ids)} notes"}
 
 @router.post("/move-bulk")

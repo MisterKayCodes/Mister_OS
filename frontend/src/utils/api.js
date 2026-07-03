@@ -265,6 +265,9 @@ export const runAnalysisApi = async (token) => {
     method: "POST",
     headers: { "X-Master-Token": token }
   });
-  if (!res.ok) throw new Error("Failed to run analysis");
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.detail || "Failed to run analysis");
+  }
   return await res.json();
 };

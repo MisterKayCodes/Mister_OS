@@ -184,7 +184,7 @@ Here are the transcripts:
                 "https://api.groq.com/openai/v1/chat/completions",
                 headers={"Authorization": f"Bearer {api_key}"},
                 json={
-                    "model": "llama3-70b-8192",
+                    "model": "llama-3.3-70b-versatile",
                     "messages": [{"role": "user", "content": prompt}],
                     "temperature": 0.3,
                     "response_format": {"type": "json_object"}
@@ -194,15 +194,23 @@ Here are the transcripts:
             data = res.json()
             content = data["choices"][0]["message"]["content"]
             parsed = json.loads(content)
+        except httpx.HTTPStatusError as e:
+            raise HTTPException(status_code=500, detail=f"Groq API Error: {e.response.text}")
         except Exception as e:
-            raise HTTPException(status_code=500, detail=f"LLM Error: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"LLM Processing Error: {str(e)}")
+
+    # Helper to ensure we always save a string (Groq sometimes returns a list of bullet points)
+    def to_str(val):
+        if isinstance(val, list):
+            return "\n".join(f"• {str(item)}" for item in val)
+        return str(val) if val else ""
 
     # 4. Save to Database
     report = models.AnalysisReport(
-        working_patterns=parsed.get("working_patterns", ""),
-        killing_patterns=parsed.get("killing_patterns", ""),
-        pain_points=parsed.get("pain_points", ""),
-        top_openers=parsed.get("top_openers", "")
+        working_patterns=to_str(parsed.get("working_patterns")),
+        killing_patterns=to_str(parsed.get("killing_patterns")),
+        pain_points=to_str(parsed.get("pain_points")),
+        top_openers=to_str(parsed.get("top_openers"))
     )
     db.add(report)
     db.commit()

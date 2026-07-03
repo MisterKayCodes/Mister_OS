@@ -28,10 +28,24 @@ class AIService:
                     price_context_lines.append(f"- {p.name} at {v_name}: ₦{latest_log.price}")
         price_context_text = "\n".join(price_context_lines) if price_context_lines else "No relevant price data found."
         
-        # 3. Build the System Prompt (Brain)
-        system_prompt = Prompts.get_omni_chat_system_prompt(context_text, price_context_text)
+        # 3. Retrieve Latest Sales Pipeline Analysis (War Room Intelligence)
+        pipeline_context = ""
+        try:
+            latest_report = db.query(models.AnalysisReport).order_by(models.AnalysisReport.created_at.desc()).first()
+            if latest_report:
+                pipeline_context = (
+                    f"WHAT'S WORKING:\n{latest_report.working_patterns}\n\n"
+                    f"WHAT'S KILLING CONVERSIONS:\n{latest_report.killing_patterns}\n\n"
+                    f"PAIN POINTS:\n{latest_report.pain_points}\n\n"
+                    f"TOP OPENER PATTERNS:\n{latest_report.top_openers}"
+                )
+        except Exception:
+            pass  # Silently skip if table doesn't exist yet
         
-        # 4. Handle Chat Session History (Memory)
+        # 4. Build the System Prompt (Brain)
+        system_prompt = Prompts.get_omni_chat_system_prompt(context_text, price_context_text, pipeline_context)
+        
+        # 5. Handle Chat Session History (Memory)
         if not session_id:
             db_session = ChatRepository.create_session(db, title=message[:30] + "...")
             session_id = db_session.id
