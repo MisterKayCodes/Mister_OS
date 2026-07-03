@@ -14,13 +14,13 @@ load_dotenv(dotenv_path=env_path)
 
 API_ID = os.getenv("API_ID")
 API_HASH = os.getenv("API_HASH")
-STRING_SESSION = os.getenv("STRING_SESSION", "")
+SESSION_STRING = os.getenv("SESSION_STRING", "")
 SESSION_NAME = os.getenv("SESSION_NAME", "outreach_session")
 MAIN_BACKEND_URL = os.getenv("MAIN_BACKEND_URL", "http://localhost:8011")
 MAIN_ACCOUNT_USERNAME = os.getenv("MAIN_ACCOUNT_USERNAME")
 
-# If STRING_SESSION is provided, it uses that. Otherwise, falls back to an SQLite file named SESSION_NAME.
-session_storage = StringSession(STRING_SESSION) if STRING_SESSION else SESSION_NAME
+# If SESSION_STRING is provided, it uses that. Otherwise, falls back to an SQLite file named SESSION_NAME.
+session_storage = StringSession(SESSION_STRING) if SESSION_STRING else SESSION_NAME
 client = TelegramClient(session_storage, API_ID, API_HASH)
 app = FastAPI(title="Mister OS - Telegram Microservice")
 

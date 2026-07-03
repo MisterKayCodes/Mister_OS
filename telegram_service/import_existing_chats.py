@@ -19,12 +19,12 @@ load_dotenv(dotenv_path=env_path)
 
 API_ID = os.getenv("API_ID")
 API_HASH = os.getenv("API_HASH")
-STRING_SESSION = os.getenv("STRING_SESSION", "")
+SESSION_STRING = os.getenv("SESSION_STRING", "")
 SESSION_NAME = os.getenv("SESSION_NAME", "outreach_session")
 BACKEND = os.getenv("MAIN_BACKEND_URL", "http://localhost:8011")
 MASTER_TOKEN = os.getenv("MASTER_TOKEN", "")
 
-session_storage = StringSession(STRING_SESSION) if STRING_SESSION else SESSION_NAME
+session_storage = StringSession(SESSION_STRING) if SESSION_STRING else SESSION_NAME
 client = TelegramClient(session_storage, API_ID, API_HASH)
 
 HEADERS = {"X-Master-Token": MASTER_TOKEN, "Content-Type": "application/json"}

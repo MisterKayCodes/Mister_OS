@@ -21,11 +21,11 @@ load_dotenv(dotenv_path=env_path)
 
 API_ID = os.getenv("API_ID")
 API_HASH = os.getenv("API_HASH")
-STRING_SESSION = os.getenv("STRING_SESSION", "")
+SESSION_STRING = os.getenv("SESSION_STRING", "")
 SESSION_NAME = os.getenv("SESSION_NAME", "outreach_session")
 BACKEND = os.getenv("MAIN_BACKEND_URL", "http://localhost:8011")
 
-session_storage = StringSession(STRING_SESSION) if STRING_SESSION else SESSION_NAME
+session_storage = StringSession(SESSION_STRING) if SESSION_STRING else SESSION_NAME
 client = TelegramClient(session_storage, API_ID, API_HASH)
 
 USERNAME_REGEX = re.compile(r'(?:t\.me/|@)([a-zA-Z][a-zA-Z0-9_]{4,})', re.IGNORECASE)
