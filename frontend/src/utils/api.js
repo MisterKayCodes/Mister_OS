@@ -242,3 +242,11 @@ export const deleteDraftApi = async (id, token) => {
   if (!res.ok) throw new Error("Failed to delete draft");
   return await res.json();
 };
+
+export const fetchTranscriptsApi = async (token) => {
+  const res = await fetch(`http://${hostname}:8011/api/leads/transcripts`, {
+    headers: { "X-Master-Token": token }
+  });
+  if (!res.ok) throw new Error("Failed to fetch chat transcripts");
+  return await res.json();
+};

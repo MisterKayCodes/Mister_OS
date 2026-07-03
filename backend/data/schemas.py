@@ -316,3 +316,8 @@ class ScrapePitchingPayload(BaseModel):
     profile_name: str
     status: str
     transcript: str
+    first_contact_at: Optional[datetime] = None
+    last_our_message_at: Optional[datetime] = None
+    last_their_message_at: Optional[datetime] = None
+    read_receipt_seen: bool = False
+    follow_up_sent: bool = False

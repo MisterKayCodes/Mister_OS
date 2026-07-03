@@ -133,9 +133,16 @@ class Lead(Base):
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True, index=True, nullable=False)
     channel_username = Column(String, nullable=True)
-    status = Column(String, default="Pitching")  # Pitching | Hot | Cold
+    status = Column(String, default="Fresh")  # Fresh | Pitching | Follow-up | Hot | Dead
     score = Column(String, nullable=True)
     auto_pilot = Column(Boolean, default=False)
+    # --- Timestamp Tracking (State Machine Engine) ---
+    first_contact_at = Column(DateTime(timezone=True), nullable=True)
+    last_our_message_at = Column(DateTime(timezone=True), nullable=True)
+    last_their_message_at = Column(DateTime(timezone=True), nullable=True)
+    read_receipt_seen = Column(Boolean, default=False)
+    follow_up_sent = Column(Boolean, default=False)
+    # -------------------------------------------------
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now(), server_default=func.now())
 

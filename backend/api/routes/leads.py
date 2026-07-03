@@ -96,12 +96,18 @@ def save_scraped_pitching_chat(req: schemas.ScrapePitchingPayload, db: Session =
     if not lead:
         lead = models.Lead(username=req.username, channel_username=req.profile_name, status=req.status)
         db.add(lead)
-        db.commit()
-        db.refresh(lead)
     else:
         lead.status = req.status
         lead.channel_username = req.profile_name
-        db.commit()
+
+    # Update timestamps and state
+    lead.first_contact_at = req.first_contact_at
+    lead.last_our_message_at = req.last_our_message_at
+    lead.last_their_message_at = req.last_their_message_at
+    lead.read_receipt_seen = req.read_receipt_seen
+    lead.follow_up_sent = req.follow_up_sent
+    db.commit()
+    db.refresh(lead)
 
     # Save transcript
     transcript = db.query(models.ChatTranscript).filter(models.ChatTranscript.lead_id == lead.id).first()
@@ -114,3 +120,21 @@ def save_scraped_pitching_chat(req: schemas.ScrapePitchingPayload, db: Session =
     db.commit()
     db.refresh(transcript)
     return transcript
+
+@router.get("/transcripts", response_model=List[dict])
+def get_chat_transcripts(db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
+    # Join ChatTranscript with Lead to get username and channel_username
+    results = db.query(models.ChatTranscript, models.Lead).join(models.Lead).order_by(models.ChatTranscript.scraped_at.desc()).all()
+    
+    transcripts = []
+    for t, l in results:
+        transcripts.append({
+            "id": t.id,
+            "lead_id": l.id,
+            "username": l.username,
+            "profile_name": l.channel_username or l.username,
+            "status": l.status,
+            "transcript": t.transcript,
+            "scraped_at": t.scraped_at
+        })
+    return transcripts
