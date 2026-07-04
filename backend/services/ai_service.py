@@ -109,10 +109,23 @@ class AIService:
             pass
 
         # 9. Intercept Autonomous Commands (Nervous System orchestrates)
-        final_reply = FinanceService.execute_autonomous_commands(db, ai_reply)
+        final_reply, results = FinanceService.execute_autonomous_commands(db, ai_reply)
         
-        if not final_reply:
-            final_reply = "Done! I've logged that for you."
+        if results:
+            status_lines = ["", "─────────────────────────"]
+            for res in results:
+                icon = "✅" if res["success"] else "❌"
+                if res["success"]:
+                    status_lines.append(f"{icon} {res['detail']}")
+                else:
+                    status_lines.append(f"{icon} Failed to execute action.")
+                    status_lines.append(f"   Details: {res['detail']}")
+                    if "error" in res:
+                        status_lines.append(f"   Reason: {res['error']}")
+            status_lines.append("─────────────────────────")
+            final_reply = (final_reply + "\n" + "\n".join(status_lines)).strip()
+        elif not final_reply:
+            final_reply = "Got it! Let me know if you need anything else."
             
         # 10. Save Assistant Message (Memory)
         db_ai_msg = ChatRepository.create_message(db, session_id, role="assistant", content=final_reply)

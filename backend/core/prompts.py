@@ -41,7 +41,8 @@ When writing pitches or outreach messages, you MUST:
             "Do NOT put the wallet name in the #category. Category = type of purchase (e.g. #data, #food, #transport).\n"
             "Command format: [LOG_EXPENSE: /spend amount description #category @today]\n"
             "Example: [LOG_EXPENSE: /spend 1000 4 eggs from Madam Tochi #food @today]\n"
-            "For the user's message, just reply naturally confirming the purchase. The system handles the rest invisibly."
+            "CRITICAL: Do NOT claim that the expense has been logged, recorded, or updated in your reply. "
+            "Simply state what you are attempting to do (e.g., 'Okay, I will record that expense.') and let the backend append the verified status block."
         ) if has_default_wallet else (
             "IMPORTANT: The user has NOT set a default spending wallet yet. If they try to log an expense, "
             "tell them to set one in the Finance tab (star icon on a Liquid wallet) before you can track it."
@@ -62,7 +63,7 @@ ACTION CAPABILITIES:
 {wallet_instruction}
 
 If the user tells you a NEW price for an item: output [LOG_PRICE: product_name, vendor_name, price] on its own line at the end.
-Example: [LOG_PRICE: Eggs, Madam Tochi, 250]
+CRITICAL: Do NOT claim that the price has been updated or saved in your reply. Just say what you're attempting to update.
 
 CRITICAL: These action commands are intercepted by the backend. They must NEVER appear in your spoken reply to the user.
 """
