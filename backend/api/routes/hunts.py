@@ -249,7 +249,9 @@ Example:
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-class ExtractAdminRequest(schemas.BaseModel):
+from pydantic import BaseModel
+
+class ExtractAdminRequest(BaseModel):
     posts_text: str
 
 @router.post("/extract_admin")
