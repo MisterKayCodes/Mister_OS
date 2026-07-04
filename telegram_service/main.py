@@ -95,70 +95,76 @@ HEADERS = {"X-Master-Token": MASTER_TOKEN, "Content-Type": "application/json"}
 
 async def outreach_loop():
     global OUTREACH_RUNNING
-    print("[Outreach] Loop started")
+    import random
+    print("[Outreach] Queue-based loop started")
+    
+    DELAY_MODES = {
+        "safe":       (45, 180),
+        "balanced":   (20, 90),
+        "aggressive": (10, 45),
+    }
+    
     while OUTREACH_RUNNING:
         try:
-            # 1. Fetch settings
+            # 1. Fetch settings for delay mode
             set_res = requests.get(f"{MAIN_BACKEND_URL}/api/hunts/settings", headers=HEADERS)
             settings = set_res.json() if set_res.ok else {}
-            min_delay = settings.get("min_delay_minutes", 30)
-            max_delay = settings.get("max_delay_minutes", 120)
+            delay_mode = settings.get("delay_mode", "balanced")
+            min_delay, max_delay = DELAY_MODES.get(delay_mode, (20, 90))
             next_run_str = settings.get("next_outreach_run")
             
-            # 2. Check if we need to sleep to resume a previous delay
+            # 2. Respect scheduled next_run time
             if next_run_str:
                 next_run = datetime.fromisoformat(next_run_str.replace("Z", "+00:00"))
                 now = datetime.now(timezone.utc)
                 if next_run > now:
                     sleep_secs = (next_run - now).total_seconds()
-                    print(f"[Outreach] Resuming sleep for {sleep_secs/60:.1f} minutes...")
+                    print(f"[Outreach] Sleeping {sleep_secs/60:.1f} min until next scheduled send...")
                     await asyncio.sleep(sleep_secs)
             
-            # 3. Fetch fresh admins
-            adm_res = requests.get(f"{MAIN_BACKEND_URL}/api/hunts/admins?status=fresh", headers=HEADERS)
-            admins = adm_res.json() if adm_res.ok else []
-            if not admins:
-                print("[Outreach] No fresh admins. Stopping.")
-                OUTREACH_RUNNING = False
-                requests.put(f"{MAIN_BACKEND_URL}/api/hunts/settings", json={"outreach_active": False}, headers=HEADERS)
-                break
-                
-            admin = admins[0]
-            username = admin["username"]
-            admin_id = admin["id"]
+            # 3. Fetch next approved queue item
+            q_res = requests.get(f"{MAIN_BACKEND_URL}/api/outreach/queue?status=approved", headers=HEADERS)
+            queue_items = q_res.json() if q_res.ok else []
             
-            # 4. Fetch templates
-            tpl_res = requests.get(f"{MAIN_BACKEND_URL}/api/hunts/templates", headers=HEADERS)
-            templates = tpl_res.json() if tpl_res.ok else []
-            if not templates:
-                print("[Outreach] No templates found! Stopping.")
-                OUTREACH_RUNNING = False
-                requests.put(f"{MAIN_BACKEND_URL}/api/hunts/settings", json={"outreach_active": False}, headers=HEADERS)
-                break
-                
-            tpl = random.choice(templates)
-            message = tpl["content"].replace("{name}", username)
+            if not queue_items:
+                print("[Outreach] No approved items in queue. Waiting 60s...")
+                await asyncio.sleep(60)
+                continue
             
-            # 5. Send message
+            item = queue_items[0]
+            queue_id = item["id"]
+            username = item["admin_username"]
+            # Use edited message if user tweaked it, otherwise use generated
+            message = item.get("edited_message") or item["generated_message"]
+            admin_id = item["admin_lead_id"]
+            
+            if not username:
+                print(f"[Outreach] Queue item {queue_id} has no username, skipping.")
+                requests.put(f"{MAIN_BACKEND_URL}/api/outreach/queue/{queue_id}", json={"status": "skipped"}, headers=HEADERS)
+                continue
+            
+            # 4. Send via Telegram
             print(f"[Outreach] Sending to @{username}...")
             await client.send_message(username, message)
             
-            # 6. Log it
+            # 5. Mark queue item as sent
+            requests.put(f"{MAIN_BACKEND_URL}/api/outreach/queue/{queue_id}", json={"status": "sent"}, headers=HEADERS)
+            
+            # 6. Log to outreach log
             requests.post(f"{MAIN_BACKEND_URL}/api/hunts/outreach/log", json={
                 "admin_lead_id": admin_id,
                 "content": message,
-                "message_variant": tpl["id"]
+                "message_variant": None
             }, headers=HEADERS)
-            print(f"[Outreach] ✅ Sent.")
+            print(f"[Outreach] ✅ Sent to @{username}")
             
-            # 7. Calculate next delay and save to DB
+            # 7. Schedule next send
             delay_minutes = random.uniform(min_delay, max_delay)
             delay_seconds = int(delay_minutes * 60)
             next_run_time = datetime.now(timezone.utc).timestamp() + delay_seconds
             next_run_iso = datetime.fromtimestamp(next_run_time, tz=timezone.utc).isoformat()
-            
             requests.put(f"{MAIN_BACKEND_URL}/api/hunts/settings", json={"next_outreach_run": next_run_iso}, headers=HEADERS)
-            print(f"[Outreach] ⏳ Sleeping {delay_minutes:.1f} min...")
+            print(f"[Outreach] ⏳ Next send in {delay_minutes:.1f} min ({delay_mode} mode)")
             
             await asyncio.sleep(delay_seconds)
             
@@ -166,7 +172,7 @@ async def outreach_loop():
             print("[Outreach] Loop cancelled.")
             break
         except Exception as e:
-            print(f"[Outreach] Error in loop: {e}")
+            print(f"[Outreach] Error: {e}")
             await asyncio.sleep(60)
 
 @app.post("/api/outreach/start")

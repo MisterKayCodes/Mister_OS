@@ -5,6 +5,6 @@ from .auth import AuthSession
 from .pricedb import Vendor, Product, PriceLog
 from .lead import Lead, LeadSummary, LeadInteraction, ChatTranscript
 from .hunt import HuntedChannel, ScrapedChannel, AdminLead
-from .outreach import OutreachLog, OutreachTemplate, CrmSettings
+from .outreach import OutreachLog, OutreachTemplate, CrmSettings, OutreachBrain, OutreachQueue
 from .analysis import AnalysisReport
 from .token import TokenUsageLog

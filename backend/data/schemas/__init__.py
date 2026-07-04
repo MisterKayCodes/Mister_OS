@@ -20,7 +20,9 @@ from .hunts import (
     ScrapedChannelResponse, AdminLeadResponse, AdminLeadUpdate, AdminLeadCreate,
     HuntedChannelBase, HuntedChannelResponse,
     OutreachLogResponse, OutreachTemplateBase, OutreachTemplateResponse, TemplateGenerateRequest,
-    CrmSettingsResponse, CrmSettingsUpdate, OutreachStatsResponse
+    CrmSettingsResponse, CrmSettingsUpdate, OutreachStatsResponse,
+    OutreachBrainResponse, OutreachBrainUpdate, CorrectionLogEntry,
+    OutreachQueueResponse, OutreachQueueUpdate
 )
 from .ai import (
     ChatMessageBase, ChatMessageResponse, ChatSessionResponse, OmniChatRequest,

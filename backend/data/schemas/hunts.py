@@ -56,12 +56,22 @@ class OutreachTemplateResponse(OutreachTemplateBase, BaseResponse):
 class TemplateGenerateRequest(BaseModel):
     chat_transcript: str
 
+class OutreachStatsResponse(BaseModel):
+    sent_today: int
+    sent_this_week: int
+    total_fresh: int
+    outreach_active: bool
+    next_run: Optional[datetime] = None
+
+# --- CRM Settings extended ---
 class CrmSettingsResponse(BaseResponse):
     id: int
     boss_alert_username: str
     outreach_active: bool
     min_delay_minutes: int
     max_delay_minutes: int
+    delay_mode: str = "balanced"
+    auto_mode: bool = False
     next_outreach_run: Optional[datetime] = None
 
 class CrmSettingsUpdate(BaseModel):
@@ -69,11 +79,45 @@ class CrmSettingsUpdate(BaseModel):
     outreach_active: Optional[bool] = None
     min_delay_minutes: Optional[int] = None
     max_delay_minutes: Optional[int] = None
+    delay_mode: Optional[str] = None
+    auto_mode: Optional[bool] = None
     next_outreach_run: Optional[datetime] = None
 
-class OutreachStatsResponse(BaseModel):
-    sent_today: int
-    sent_this_week: int
-    total_fresh: int
-    outreach_active: bool
-    next_run: Optional[datetime] = None
+# --- Outreach Brain ---
+class OutreachBrainResponse(BaseModel):
+    id: int
+    advice_text: Optional[str] = None
+    correction_log: Optional[list] = []
+    generated_count: int = 0
+    last_updated: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+class OutreachBrainUpdate(BaseModel):
+    advice_text: Optional[str] = None
+
+class CorrectionLogEntry(BaseModel):
+    original: str
+    corrected: str
+    reason: Optional[str] = None
+
+# --- Outreach Queue ---
+class OutreachQueueResponse(BaseModel):
+    id: int
+    admin_lead_id: int
+    admin_username: Optional[str] = None
+    channel_name: Optional[str] = None
+    generated_message: str
+    edited_message: Optional[str] = None
+    was_edited: bool = False
+    status: str
+    created_at: datetime
+    approved_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+class OutreachQueueUpdate(BaseModel):
+    edited_message: Optional[str] = None
+    status: Optional[str] = None
