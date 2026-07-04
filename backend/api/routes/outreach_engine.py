@@ -116,7 +116,8 @@ Return ONLY the message text. No quotes, no labels, no explanation."""
 async def _generate_message(brain, channel_name: str, member_count) -> str:
     prompt = _build_prompt(brain, channel_name, member_count)
     messages = [{"role": "user", "content": prompt}]
-    return await LLMProvider.generate_completion(messages=messages, temperature=0.75)
+    text, usage = await LLMProvider.generate_completion(messages=messages, temperature=0.75)
+    return text
 
 # ─── Queue ───────────────────────────────────────────────────────────────────
 
