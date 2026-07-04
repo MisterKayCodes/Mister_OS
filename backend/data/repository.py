@@ -13,7 +13,7 @@ class NoteRepository:
 
     @staticmethod
     def get_by_title(db: Session, title: str) -> Optional[models.Note]:
-        return db.query(models.Note).filter(models.Note.title == title).first()
+        return db.query(models.Note).filter(models.Note.title.ilike(title.strip())).first()
 
     @staticmethod
     def create(db: Session, title: str, content: str, folder_id: Optional[int] = None) -> models.Note:

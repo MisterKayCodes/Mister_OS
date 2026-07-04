@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
-from data.repository import FinanceRepository
+from data.repository import FinanceRepository, NoteRepository
+from data import models
 from core.parsers.finance_parser import FinanceParser
 from providers.exchange_provider import ExchangeProvider
 import re
@@ -81,8 +82,6 @@ class FinanceService:
         Extracts [LOG_EXPENSE] and [LOG_PRICE] tags from the LLM reply,
         acts upon them, and strips them from the returned string.
         """
-        from data.repository import NoteRepository
-        
         # Process [LOG_PRICE: product, vendor, price]
         price_matches = re.findall(r"\[LOG_PRICE:\s*(.+?),\s*(.+?),\s*(\d+)\]", llm_reply)
         for product_name, vendor_name, price in price_matches:
@@ -104,15 +103,21 @@ class FinanceService:
         # Process [LOG_EXPENSE: /spend ...]
         expense_matches = re.findall(r"\[LOG_EXPENSE:\s*(.+?)\]", llm_reply)
         for cmd_str in expense_matches:
-            ledger_title = "Finance Ledger"
-            note = NoteRepository.get_by_title(db, ledger_title)
+            from services.note_service import NoteService
+            
+            # Try exact match first, then case-insensitive "ledger" fallback
+            note = NoteRepository.get_by_title(db, "Finance Ledger")
             if not note:
-                note = NoteRepository.create(db, ledger_title, "")
+                # Fallback: search for any note containing 'ledger' in the title
+                note = db.query(models.Note).filter(models.Note.title.ilike("%ledger%")).first()
+            if not note:
+                # Last resort: create the ledger note (no folder — will be visible in root)
+                note = NoteRepository.create(db, "Finance Ledger", "")
             
-            note.content += f"\n{cmd_str.strip()}"
-            NoteRepository.update(db, note)
+            new_content = note.content + f"\n{cmd_str.strip()}"
             
-            FinanceService.sync_note_transactions(db, note.id, note.content)
+            # Route through NoteService to keep vector store in sync
+            NoteService.update_note(db, note.id, content=new_content)
             
         llm_reply = re.sub(r"\[LOG_EXPENSE:.*?\]\n?", "", llm_reply)
         return llm_reply.strip()
