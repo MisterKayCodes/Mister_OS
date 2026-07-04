@@ -71,8 +71,13 @@ class AIService:
             pass
 
         # 5. Build the System Prompt (Brain)
-        settings = db.query(models.FinanceSettings).first()
-        has_default_wallet = bool(settings and settings.default_wallet_id)
+        has_default_wallet = True  # Default to True so bot can log if settings table missing
+        try:
+            settings = db.query(models.FinanceSettings).first()
+            if settings is not None:
+                has_default_wallet = bool(settings.default_wallet_id)
+        except Exception:
+            pass  # Table may not exist yet on VPS — allow logging by default
         system_prompt = Prompts.get_omni_chat_system_prompt(context_text, price_context_text, pipeline_context, token_context, has_default_wallet)
         
         # 6. Handle Chat Session History (Memory)
