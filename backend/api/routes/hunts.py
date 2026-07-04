@@ -43,6 +43,15 @@ def ingest_channel(payload: dict, db: Session = Depends(database.get_db)):
     db.refresh(channel)
     return {"status": "created", "id": channel.id}
 
+@router.delete("/channels/{channel_id}")
+def delete_channel(channel_id: int, db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
+    channel = db.query(models.ScrapedChannel).filter(models.ScrapedChannel.id == channel_id).first()
+    if not channel:
+        raise HTTPException(status_code=404, detail="Channel not found")
+    db.delete(channel)
+    db.commit()
+    return {"status": "deleted"}
+
 # --- Admin Leads ---
 @router.get("/admins", response_model=List[schemas.AdminLeadResponse])
 def get_admins(status: str = None, db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
@@ -101,6 +110,15 @@ def create_admin_manual(req: schemas.AdminLeadCreate, db: Session = Depends(data
     db.commit()
     db.refresh(admin)
     return admin
+
+@router.delete("/admins/{admin_id}")
+def delete_admin_lead(admin_id: int, db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
+    admin = db.query(models.AdminLead).filter(models.AdminLead.id == admin_id).first()
+    if not admin:
+        raise HTTPException(status_code=404, detail="Admin not found")
+    db.delete(admin)
+    db.commit()
+    return {"status": "deleted"}
 
 # --- CRM Settings ---
 @router.get("/settings", response_model=schemas.CrmSettingsResponse)
@@ -228,6 +246,25 @@ Example:
             db.refresh(tpl)
             
         return created_templates
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+class ExtractAdminRequest(schemas.BaseModel):
+    posts_text: str
+
+@router.post("/extract_admin")
+async def extract_admin(req: ExtractAdminRequest):
+    prompt = f"""Read the following Telegram posts from a channel and find the username of the human admin or owner.
+Ignore bot usernames (ending in bot) and ignore general links.
+Return ONLY the username starting with @. If you cannot confidently find a human admin, return EXACTLY the string "NONE".
+
+Posts:
+{req.posts_text}"""
+    try:
+        messages = [{"role": "user", "content": prompt}]
+        response_text = await LLMProvider.generate_completion(messages=messages, temperature=0.3)
+        cleaned = response_text.strip()
+        return {"username": cleaned}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

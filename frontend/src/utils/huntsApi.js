@@ -125,3 +125,21 @@ export const fetchHuntLogsApi = async (token) => {
   if (!res.ok) throw new Error("Failed to fetch logs");
   return await res.json();
 };
+
+export const deleteScrapedChannelApi = async (id, token) => {
+  const res = await fetch(`${HUNTS_BASE}/channels/${id}`, {
+    method: "DELETE",
+    headers: { "X-Master-Token": token }
+  });
+  if (!res.ok) throw new Error("Failed to delete channel");
+  return await res.json();
+};
+
+export const deleteAdminLeadApi = async (id, token) => {
+  const res = await fetch(`${HUNTS_BASE}/admins/${id}`, {
+    method: "DELETE",
+    headers: { "X-Master-Token": token }
+  });
+  if (!res.ok) throw new Error("Failed to delete admin lead");
+  return await res.json();
+};

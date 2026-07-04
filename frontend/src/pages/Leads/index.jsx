@@ -115,23 +115,6 @@ export default function LeadsApp({ token, onBack }) {
           </button>
         </div>
 
-        {/* Row 2.5: Live Logs */}
-        {showLogs && (
-          <div className="px-4 pb-3">
-            <div className="bg-gray-900 rounded-lg p-3 relative">
-              <button 
-                onClick={() => setShowLogs(false)} 
-                className="absolute top-2 right-2 text-gray-400 hover:text-white text-xs bg-gray-800 px-2 py-1 rounded"
-              >
-                Close
-              </button>
-              <div className="text-xs font-mono text-green-400 h-32 overflow-y-auto whitespace-pre-wrap">
-                {huntLogs || "Connecting to worker logs..."}
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Row 3: Tab Nav */}
         <div className="flex border-t border-gray-100">
           {TABS.map(t => (
@@ -180,6 +163,26 @@ export default function LeadsApp({ token, onBack }) {
           </>
         )}
       </div>
+
+      {/* Popup Modal for Live Logs */}
+      {showLogs && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-gray-900 w-full max-w-2xl rounded-xl shadow-2xl border border-gray-700 overflow-hidden flex flex-col h-[70vh]">
+            <div className="bg-gray-800 px-4 py-3 border-b border-gray-700 flex justify-between items-center">
+              <div className="flex items-center gap-2 text-green-400 font-mono text-sm">
+                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                Terminal: Live Hunt Worker
+              </div>
+              <button onClick={() => setShowLogs(false)} className="text-gray-400 hover:text-white transition">
+                Close
+              </button>
+            </div>
+            <div className="p-4 flex-1 overflow-y-auto text-green-400 font-mono text-xs whitespace-pre-wrap">
+              {huntLogs || "Connecting to worker logs..."}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

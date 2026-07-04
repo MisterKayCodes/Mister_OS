@@ -12,8 +12,7 @@ import argparse
 import requests
 from dotenv import load_dotenv
 from telethon import TelegramClient
-from telethon.tl.functions.channels import GetFullChannelRequest
-from telethon.tl.functions.contacts import SearchRequest
+from telethon.tl.functions.channels import GetFullChannelRequest, GetChannelRecommendationsRequest
 from telethon.sessions import StringSession
 
 env_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'backend', '.env'))
@@ -51,17 +50,29 @@ async def extract_admin_from_description(about: str, channel_id: int) -> list:
     return [u for u in found if len(u) > 4]
 
 async def extract_admin_from_posts(entity, channel_db_id: int, post_limit: int = 50) -> list:
-    """Fetch last N posts and scan for @mentions or t.me links."""
-    found_usernames = set()
-    print(f"    Scanning last {post_limit} posts...")
-    # Add a small delay before fetching posts to be safe
+    """Fetch last N posts and ask backend LLM to extract admin username."""
+    print(f"    Scanning last {post_limit} posts using AI...")
     await asyncio.sleep(3)
+    texts = []
     async for message in client.iter_messages(entity, limit=post_limit):
         if message.text:
-            matches = USERNAME_REGEX.findall(message.text)
-            for m in matches:
-                found_usernames.add(m)
-    return list(found_usernames)
+            texts.append(message.text)
+    
+    if not texts:
+        return []
+    
+    combined_text = "\n---\n".join(texts)[:8000] # Limit size
+    
+    try:
+        r = requests.post(f"{BACKEND}/api/hunts/extract_admin", json={"posts_text": combined_text}, timeout=20)
+        if r.status_code == 200:
+            username = r.json().get("username")
+            if username and username != "NONE":
+                return [username.lstrip("@")]
+    except Exception as e:
+        print(f"  [!] AI extraction failed: {e}")
+    
+    return []
 
 async def process_channel(entity, seed_username: str):
     """Full pipeline: describe channel → extract admins → post to backend."""
@@ -134,19 +145,14 @@ async def main(seed_channel: str, limit: int):
 
     print(f"Seed channel found: {getattr(seed_entity, 'title', seed_channel)}")
 
-    # Search for similar channels by the seed channel's title keywords
-    seed_title = getattr(seed_entity, 'title', seed_channel)
-    keywords = seed_title.split()[:2]  # Use first 2 words as search query
-    search_query = " ".join(keywords)
-
-    print(f"Searching Telegram for channels like: '{search_query}'")
+    print(f"Asking Telegram for channels similar to {seed_channel}...")
     await asyncio.sleep(2)  # Be polite before searching
 
     try:
-        result = await client(SearchRequest(q=search_query, limit=limit))
-        channels = [c for c in result.chats if hasattr(c, 'broadcast') or hasattr(c, 'megagroup')]
+        result = await client(GetChannelRecommendationsRequest(channel=seed_entity))
+        channels = [c for c in result.chats if hasattr(c, 'username') and c.username]
     except Exception as e:
-        print(f"Search failed: {e}")
+        print(f"Recommendations failed: {e}")
         channels = []
 
     if not channels:

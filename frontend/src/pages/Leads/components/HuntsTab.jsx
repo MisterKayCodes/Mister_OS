@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Crosshair, Users, Send, AlertTriangle } from 'lucide-react';
-import { fetchHuntsApi, updateAdminLeadApi } from '../../../utils/huntsApi';
+import { Crosshair, Users, Send, AlertTriangle, Trash2 } from 'lucide-react';
+import { fetchHuntsApi, updateAdminLeadApi, deleteAdminLeadApi, deleteScrapedChannelApi } from '../../../utils/huntsApi';
 
 export default function HuntsTab({ token }) {
   const [channels, setChannels] = useState([]);
@@ -18,6 +18,22 @@ export default function HuntsTab({ token }) {
     try {
       const updated = await updateAdminLeadApi(admin.id, { status: newStatus }, token);
       setAdmins(admins.map(a => a.id === admin.id ? updated : a));
+    } catch (e) { alert(e.message); }
+  };
+
+  const handleDeleteAdmin = async (adminId) => {
+    if (!window.confirm('Are you sure you want to delete this admin lead?')) return;
+    try {
+      await deleteAdminLeadApi(adminId, token);
+      setAdmins(admins.filter(a => a.id !== adminId));
+    } catch (e) { alert(e.message); }
+  };
+
+  const handleDeleteChannel = async (channelId) => {
+    if (!window.confirm('Are you sure you want to delete this channel?')) return;
+    try {
+      await deleteScrapedChannelApi(channelId, token);
+      setChannels(channels.filter(c => c.id !== channelId));
     } catch (e) { alert(e.message); }
   };
 
@@ -59,9 +75,13 @@ export default function HuntsTab({ token }) {
                       <tr key={admin.id} className="border-t border-gray-100 hover:bg-gray-50">
                         <td className="p-3 font-bold text-gray-900">@{admin.username}</td>
                         <td className="p-3 text-gray-500 text-xs capitalize">{admin.source}</td>
-                        <td className="p-3">
+                        <td className="p-3 flex items-center gap-2">
                           <button onClick={() => handleStatusChange(admin, 'dead')}
                             className="text-xs text-red-500 hover:bg-red-50 px-2 py-1 rounded transition">Mark Dead</button>
+                          <button onClick={() => handleDeleteAdmin(admin.id)}
+                            className="text-gray-400 hover:text-red-500 transition" title="Delete">
+                            <Trash2 size={14} />
+                          </button>
                         </td>
                       </tr>
                     ))}
@@ -111,9 +131,13 @@ export default function HuntsTab({ token }) {
                     {manualAdmins.map(admin => (
                       <tr key={admin.id} className="border-t border-amber-100">
                         <td className="p-3 text-amber-900 font-medium">{admin.username.replace('MANUAL:', '')}</td>
-                        <td className="p-3 flex gap-2">
+                        <td className="p-3 flex gap-2 items-center">
                           <button onClick={() => handleStatusChange(admin, 'dead')}
                             className="text-xs text-red-500 hover:bg-red-50 px-2 py-1 rounded">Dead</button>
+                          <button onClick={() => handleDeleteAdmin(admin.id)}
+                            className="text-amber-700/50 hover:text-red-500 transition" title="Delete">
+                            <Trash2 size={14} />
+                          </button>
                         </td>
                       </tr>
                     ))}
@@ -136,17 +160,21 @@ export default function HuntsTab({ token }) {
             ) : (
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 text-xs text-gray-500 font-medium">
-                  <tr><th className="p-3 text-left">Channel</th><th className="p-3 text-left">Members</th><th className="p-3 text-left">Status</th></tr>
+                  <tr><th className="p-3 text-left">Channel</th><th className="p-3 text-left">Members</th><th className="p-3 text-left">Status/Actions</th></tr>
                 </thead>
                 <tbody>
                   {channels.map(ch => (
                     <tr key={ch.id} className="border-t border-gray-100 hover:bg-gray-50">
                       <td className="p-3 font-bold text-gray-900">@{ch.username || ch.tg_id}</td>
                       <td className="p-3 text-gray-500 text-xs">{ch.members_count?.toLocaleString() || '—'}</td>
-                      <td className="p-3">
+                      <td className="p-3 flex items-center gap-2">
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${ch.status === 'scanned' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
                           {ch.status}
                         </span>
+                        <button onClick={() => handleDeleteChannel(ch.id)}
+                          className="text-gray-400 hover:text-red-500 transition" title="Delete">
+                          <Trash2 size={14} />
+                        </button>
                       </td>
                     </tr>
                   ))}
