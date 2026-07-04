@@ -8,7 +8,7 @@ from providers.llm_provider import LLMProvider
 import json
 import subprocess
 import os
-
+import sys
 router = APIRouter(prefix="/api/hunts", tags=["Hunts"])
 
 def get_db():
@@ -242,13 +242,38 @@ def run_hunt_worker(payload: dict, token: str = Depends(get_master_token)):
     telegram_service_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'telegram_service'))
     hunt_script = os.path.join(telegram_service_dir, "hunt_worker.py")
     
+    # Log file setup
+    logs_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'logs'))
+    os.makedirs(logs_dir, exist_ok=True)
+    log_file_path = os.path.join(logs_dir, "hunt_worker.log")
+    
     try:
-        # Popen runs the process in the background and returns immediately
+        # Open the log file and clear its previous contents
+        log_file = open(log_file_path, "w")
+        log_file.write(f"--- Starting Hunt for {seed} with limit {limit} ---\n")
+        log_file.flush()
+        
+        # Popen runs the process in the background. We use sys.executable to ensure we use the venv python.
+        # -u forces unbuffered output so logs appear instantly
         subprocess.Popen(
-            ["python3", hunt_script, "--seed", seed, "--limit", str(limit)],
-            cwd=telegram_service_dir
+            [sys.executable, "-u", hunt_script, "--seed", seed, "--limit", str(limit)],
+            cwd=telegram_service_dir,
+            stdout=log_file,
+            stderr=subprocess.STDOUT
         )
         return {"status": "started", "message": f"Hunt worker started for {seed} with limit {limit}"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to start worker: {str(e)}")
 
+@router.get("/run/logs")
+def get_hunt_logs(token: str = Depends(get_master_token)):
+    logs_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'logs'))
+    log_file_path = os.path.join(logs_dir, "hunt_worker.log")
+    if not os.path.exists(log_file_path):
+        return {"logs": ""}
+    try:
+        with open(log_file_path, "r") as f:
+            content = f.read()
+            return {"logs": content[-10000:]}
+    except Exception:
+        return {"logs": "Failed to read logs"}

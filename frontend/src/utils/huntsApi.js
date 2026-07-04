@@ -119,3 +119,9 @@ export const runHuntWorkerApi = async (seed, limit, token) => {
   }
   return await res.json();
 };
+
+export const fetchHuntLogsApi = async (token) => {
+  const res = await fetch(`${HUNTS_BASE}/run/logs`, { headers: { "X-Master-Token": token } });
+  if (!res.ok) throw new Error("Failed to fetch logs");
+  return await res.json();
+};

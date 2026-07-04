@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Target, Search, ChevronLeft, BarChart2, Send, Crosshair, MessageSquare } from 'lucide-react';
 import { fetchLeadsApi, createLeadApi, fetchPendingDraftsApi } from '../../utils/api';
-import { runHuntWorkerApi } from '../../utils/huntsApi';
+import { runHuntWorkerApi, fetchHuntLogsApi } from '../../utils/huntsApi';
 // ─── Tab Components ──────────────────────────────────────────────────
 import ActiveTab from './components/ActiveTab.jsx';
 import ChatLibraryTab from './components/ChatLibraryTab.jsx';
@@ -23,6 +23,8 @@ export default function LeadsApp({ token, onBack }) {
   const [huntChannel, setHuntChannel]     = useState('');
   const [huntLimit, setHuntLimit]         = useState(10);
   const [isHunting, setIsHunting]         = useState(false);
+  const [showLogs, setShowLogs]           = useState(false);
+  const [huntLogs, setHuntLogs]           = useState('');
   const [isLoading, setIsLoading]         = useState(true);
 
   useEffect(() => {
@@ -30,6 +32,19 @@ export default function LeadsApp({ token, onBack }) {
       .then(([l, d]) => { setLeads(l); setDrafts(d); setIsLoading(false); })
       .catch(() => setIsLoading(false));
   }, [token]);
+
+  useEffect(() => {
+    let interval;
+    if (showLogs) {
+      interval = setInterval(async () => {
+        try {
+          const res = await fetchHuntLogsApi(token);
+          setHuntLogs(res.logs);
+        } catch (e) { }
+      }, 2000);
+    }
+    return () => clearInterval(interval);
+  }, [showLogs, token]);
 
   const handleAddLead = async (e) => {
     e.preventDefault();
@@ -46,7 +61,7 @@ export default function LeadsApp({ token, onBack }) {
     setIsHunting(true);
     try {
       await runHuntWorkerApi(huntChannel.trim(), huntLimit, token);
-      alert(`Hunt started for ${huntChannel.trim()}! Check the Active Pipeline or Hunts tab in a few minutes.`);
+      setShowLogs(true);
       setHuntChannel('');
     } catch (err) {
       alert(err.message);
@@ -99,6 +114,23 @@ export default function LeadsApp({ token, onBack }) {
             {isHunting ? <span className="animate-pulse">Starting...</span> : <><Search size={14} /> Hunt</>}
           </button>
         </div>
+
+        {/* Row 2.5: Live Logs */}
+        {showLogs && (
+          <div className="px-4 pb-3">
+            <div className="bg-gray-900 rounded-lg p-3 relative">
+              <button 
+                onClick={() => setShowLogs(false)} 
+                className="absolute top-2 right-2 text-gray-400 hover:text-white text-xs bg-gray-800 px-2 py-1 rounded"
+              >
+                Close
+              </button>
+              <div className="text-xs font-mono text-green-400 h-32 overflow-y-auto whitespace-pre-wrap">
+                {huntLogs || "Connecting to worker logs..."}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Row 3: Tab Nav */}
         <div className="flex border-t border-gray-100">
