@@ -118,7 +118,7 @@ export default function GoalsTab({ goals, setGoals, wallets, formatNGN, token })
       setGoals(goals.map(g => g.id === id ? { ...g, achieved: true } : g));
       setCelebratingId(id);
       setTimeout(() => setCelebratingId(null), 2500);
-      showToast('🎉 Goal achieved! You're a legend, Boss!', 'success');
+      showToast("🎉 Goal achieved! You're a legend, Boss!", 'success');
     } catch (err) { showToast(err.message, 'error'); }
   };
 
