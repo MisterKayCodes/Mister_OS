@@ -7,6 +7,7 @@ export default function HuntsTab({ token }) {
   const [admins, setAdmins] = useState([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState('admins'); // admins | channels
+  const [editUsernames, setEditUsernames] = useState({});
 
   useEffect(() => {
     fetchHuntsApi(token)
@@ -19,6 +20,21 @@ export default function HuntsTab({ token }) {
       const updated = await updateAdminLeadApi(admin.id, { status: newStatus }, token);
       setAdmins(admins.map(a => a.id === admin.id ? updated : a));
     } catch (e) { alert(e.message); }
+  };
+
+  const handleSaveManualAdmin = async (admin) => {
+    const newUsername = editUsernames[admin.id];
+    if (!newUsername || !newUsername.trim()) return alert("Enter a username");
+    try {
+      const updated = await updateAdminLeadApi(admin.id, { username: newUsername.trim().replace('@', ''), status: 'fresh' }, token);
+      setAdmins(admins.map(a => a.id === admin.id ? updated : a));
+    } catch (e) { alert(e.message); }
+  };
+
+  const getChannelName = (channelId) => {
+    if (!channelId) return null;
+    const ch = channels.find(c => c.id === channelId);
+    return ch ? (ch.username ? `@${ch.username}` : ch.title) : null;
   };
 
   const handleDeleteAdmin = async (adminId) => {
@@ -73,7 +89,10 @@ export default function HuntsTab({ token }) {
                   <tbody>
                     {freshAdmins.map(admin => (
                       <tr key={admin.id} className="border-t border-gray-100 hover:bg-gray-50">
-                        <td className="p-3 font-bold text-gray-900">@{admin.username}</td>
+                        <td className="p-3 font-bold text-gray-900">
+                          {admin.username.startsWith('MANUAL:') ? admin.username : `@${admin.username}`}
+                          {admin.channel_id && <div className="text-xs text-blue-500 font-normal">from {getChannelName(admin.channel_id)}</div>}
+                        </td>
                         <td className="p-3 text-gray-500 text-xs capitalize">{admin.source}</td>
                         <td className="p-3 flex items-center gap-2">
                           <button onClick={() => handleStatusChange(admin, 'dead')}
@@ -125,13 +144,26 @@ export default function HuntsTab({ token }) {
               <div className="bg-amber-50 rounded-xl border border-amber-200 overflow-hidden">
                 <table className="w-full text-sm">
                   <thead className="bg-amber-100 text-xs text-amber-700 font-medium">
-                    <tr><th className="p-3 text-left">Channel</th><th className="p-3 text-left">Actions</th></tr>
+                    <tr><th className="p-3 text-left">Channel</th><th className="p-3 text-left">Real Username</th><th className="p-3 text-left">Actions</th></tr>
                   </thead>
                   <tbody>
-                    {manualAdmins.map(admin => (
+                    {manualAdmins.map(admin => {
+                      const channelName = getChannelName(admin.channel_id) || admin.username.replace('MANUAL:', '');
+                      return (
                       <tr key={admin.id} className="border-t border-amber-100">
-                        <td className="p-3 text-amber-900 font-medium">{admin.username.replace('MANUAL:', '')}</td>
+                        <td className="p-3 text-amber-900 font-medium">{channelName}</td>
+                        <td className="p-3">
+                          <input 
+                            type="text" 
+                            placeholder="@username"
+                            className="text-xs p-2 border border-amber-200 rounded w-full bg-white text-gray-800 focus:outline-none focus:border-amber-400"
+                            value={editUsernames[admin.id] !== undefined ? editUsernames[admin.id] : ''}
+                            onChange={e => setEditUsernames({...editUsernames, [admin.id]: e.target.value})}
+                          />
+                        </td>
                         <td className="p-3 flex gap-2 items-center">
+                          <button onClick={() => handleSaveManualAdmin(admin)}
+                            className="text-xs bg-amber-600 text-white hover:bg-amber-700 px-2 py-1 rounded shadow-sm font-bold transition">Save & Fresh</button>
                           <button onClick={() => handleStatusChange(admin, 'dead')}
                             className="text-xs text-red-500 hover:bg-red-50 px-2 py-1 rounded">Dead</button>
                           <button onClick={() => handleDeleteAdmin(admin.id)}
@@ -140,7 +172,7 @@ export default function HuntsTab({ token }) {
                           </button>
                         </td>
                       </tr>
-                    ))}
+                    )})}
                   </tbody>
                 </table>
               </div>

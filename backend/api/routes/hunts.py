@@ -76,11 +76,22 @@ def ingest_admin(payload: dict, db: Session = Depends(database.get_db)):
     if existing:
         return {"status": "already_exists", "id": existing.id}
 
+    # Lookup channel by tg_id if provided
+    channel_id = payload.get("channel_id")
+    channel_tg_id = payload.get("channel_tg_id")
+    if channel_tg_id:
+        ch = db.query(models.ScrapedChannel).filter(models.ScrapedChannel.tg_id == channel_tg_id).first()
+        if ch:
+            channel_id = ch.id
+
+    source = payload.get("source", "description")
+    status = "manual_review" if source == "manual" else "fresh"
+
     admin = models.AdminLead(
         username=username,
-        channel_id=payload.get("channel_id"),
-        source=payload.get("source", "description"),
-        status="fresh"
+        channel_id=channel_id,
+        source=source,
+        status=status
     )
     db.add(admin)
     db.commit()
@@ -119,6 +130,28 @@ def delete_admin_lead(admin_id: int, db: Session = Depends(database.get_db), tok
     db.delete(admin)
     db.commit()
     return {"status": "deleted"}
+
+@router.post("/migrate-manual")
+def migrate_manual_admins(db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
+    """One-off script to migrate old MANUAL: entries to the proper status and link channels."""
+    admins = db.query(models.AdminLead).filter(models.AdminLead.username.like("MANUAL:%")).all()
+    count = 0
+    for admin in admins:
+        # Move to manual review
+        if admin.status == "fresh":
+            admin.status = "manual_review"
+        # Try to link channel
+        if not admin.channel_id:
+            channel_username = admin.username.replace("MANUAL:", "")
+            ch = db.query(models.ScrapedChannel).filter(
+                (models.ScrapedChannel.username == channel_username) | 
+                (models.ScrapedChannel.tg_id == channel_username)
+            ).first()
+            if ch:
+                admin.channel_id = ch.id
+        count += 1
+    db.commit()
+    return {"migrated_count": count}
 
 # --- CRM Settings ---
 @router.get("/settings", response_model=schemas.CrmSettingsResponse)

@@ -115,7 +115,7 @@ async def process_channel(entity, seed_username: str):
             result = post_admin({
                 "username": username,
                 "source": source,
-                "channel_id": None  # backend assigns from tg_id lookup
+                "channel_tg_id": tg_id
             })
             status = result.get("status", "?")
             print(f"    Admin: @{username} [{source}] → {status}")
@@ -124,7 +124,7 @@ async def process_channel(entity, seed_username: str):
         post_admin({
             "username": f"MANUAL:{ch_username or tg_id}",
             "source": "manual",
-            "channel_id": None
+            "channel_tg_id": tg_id
         })
         print(f"    No admin found → Manual Review")
 
