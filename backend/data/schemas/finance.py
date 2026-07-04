@@ -37,6 +37,17 @@ class DebtResponse(BaseResponse):
     settled: bool
     date: datetime
 
+class SubscriptionBase(BaseModel):
+    name: str
+    amount: int
+    cycle: str
+    next_due_date: datetime
+    wallet_id: Optional[int] = None
+    auto_deduct: Optional[bool] = False
+
+class SubscriptionResponse(SubscriptionBase, BaseResponse):
+    id: int
+
 class FinanceInsightsRequest(BaseModel):
     pass
 

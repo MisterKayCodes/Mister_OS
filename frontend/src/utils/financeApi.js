@@ -187,3 +187,37 @@ export const createPriceLogApi = async (priceLog, token) => {
   if (!res.ok) throw new Error("Failed to log price");
   return await res.json();
 };
+
+export const getSubscriptionsApi = async (token) => {
+  const res = await fetch(`${API_BASE}/subscriptions`, { headers: { "X-Master-Token": token } });
+  if (!res.ok) throw new Error("Failed to fetch subscriptions");
+  return await res.json();
+};
+
+export const createSubscriptionApi = async (data, token) => {
+  const res = await fetch(`${API_BASE}/subscriptions`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Master-Token": token },
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) throw new Error("Failed to create subscription");
+  return await res.json();
+};
+
+export const deleteSubscriptionApi = async (id, token) => {
+  const res = await fetch(`${API_BASE}/subscriptions/${id}`, {
+    method: "DELETE",
+    headers: { "X-Master-Token": token }
+  });
+  if (!res.ok) throw new Error("Failed to delete subscription");
+  return await res.json();
+};
+
+export const paySubscriptionApi = async (id, token) => {
+  const res = await fetch(`${API_BASE}/subscriptions/${id}/pay`, {
+    method: "POST",
+    headers: { "X-Master-Token": token }
+  });
+  if (!res.ok) throw new Error("Failed to mark subscription as paid");
+  return await res.json();
+};

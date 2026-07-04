@@ -84,6 +84,33 @@ class FinanceRepository:
         db.refresh(plog)
         return plog
 
+    @staticmethod
+    def get_subscriptions(db: Session) -> List[models.Subscription]:
+        return db.query(models.Subscription).order_by(models.Subscription.next_due_date.asc()).all()
+
+    @staticmethod
+    def get_subscription_by_id(db: Session, sub_id: int) -> Optional[models.Subscription]:
+        return db.query(models.Subscription).filter(models.Subscription.id == sub_id).first()
+
+    @staticmethod
+    def create_subscription(db: Session, sub_data: dict) -> models.Subscription:
+        sub = models.Subscription(**sub_data)
+        db.add(sub)
+        db.commit()
+        db.refresh(sub)
+        return sub
+        
+    @staticmethod
+    def update_subscription(db: Session, sub: models.Subscription) -> models.Subscription:
+        db.commit()
+        db.refresh(sub)
+        return sub
+
+    @staticmethod
+    def delete_subscription(db: Session, sub_id: int):
+        db.query(models.Subscription).filter(models.Subscription.id == sub_id).delete()
+        db.commit()
+
 class ChatRepository:
     @staticmethod
     def create_session(db: Session, title: str) -> models.ChatSession:

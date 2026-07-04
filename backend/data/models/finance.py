@@ -50,6 +50,17 @@ class BudgetCap(Base):
     category = Column(String)
     monthly_limit = Column(Integer)
 
+class Subscription(Base):
+    __tablename__ = "subscriptions"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String)
+    amount = Column(Integer)
+    cycle = Column(String) # 'monthly', 'weekly', 'yearly'
+    next_due_date = Column(DateTime(timezone=True))
+    wallet_id = Column(Integer, nullable=True)
+    auto_deduct = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
 class FinanceSettings(Base):
     __tablename__ = "finance_settings"
     id = Column(Integer, primary_key=True, index=True)

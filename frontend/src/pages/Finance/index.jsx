@@ -1,15 +1,16 @@
 // Rule: Max 200 lines per file — split if exceeded
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ArrowUpRight, ArrowDownRight } from 'lucide-react';
-import { getFinanceOverview, getTransactions, getWallets, getGoals } from '../../utils/financeApi';
+import { getFinanceOverview, getTransactions, getWallets, getGoals, getSubscriptionsApi } from '../../utils/financeApi';
 import TransactionsTab from './components/TransactionsTab';
 import WalletsTab from './components/WalletsTab';
 import GoalsTab from './components/GoalsTab';
+import SubscriptionsTab from './components/SubscriptionsTab';
 import InsightsTab from './components/InsightsTab';
 import PriceDbTab from './components/PriceDbTab';
 import { useToast } from '../../context/ToastContext';
 
-const TABS = ['overview', 'transactions', 'wallets', 'goals', 'price-db', 'insights'];
+const TABS = ['overview', 'transactions', 'wallets', 'goals', 'subscriptions', 'price-db', 'insights'];
 
 export default function FinanceApp({ token, onBack }) {
   const [activeTab, setActiveTab] = useState('overview');
@@ -17,6 +18,7 @@ export default function FinanceApp({ token, onBack }) {
   const [transactions, setTransactions] = useState([]);
   const [wallets, setWallets] = useState([]);
   const [goals, setGoals] = useState([]);
+  const [subscriptions, setSubscriptions] = useState([]);
   const [loading, setLoading] = useState(true);
   const { showToast } = useToast();
 
@@ -25,16 +27,18 @@ export default function FinanceApp({ token, onBack }) {
   const fetchAll = async () => {
     setLoading(true);
     try {
-      const [ov, txs, ws, gs] = await Promise.all([
+      const [ov, txs, ws, gs, subs] = await Promise.all([
         getFinanceOverview(token),
         getTransactions(token),
         getWallets(token),
-        getGoals(token)
+        getGoals(token),
+        getSubscriptionsApi(token)
       ]);
       setOverview(ov);
       setTransactions(txs);
       setWallets(ws);
       setGoals(gs);
+      setSubscriptions(subs);
     } catch (err) {
       showToast('Error loading finance data: ' + err.message, 'error');
     } finally {
@@ -120,6 +124,7 @@ export default function FinanceApp({ token, onBack }) {
             {activeTab === 'transactions' && <TransactionsTab transactions={transactions} formatNGN={formatNGN} token={token} fetchAll={fetchAll} />}
             {activeTab === 'wallets' && <WalletsTab wallets={wallets} setWallets={setWallets} formatNGN={formatNGN} token={token} />}
             {activeTab === 'goals' && <GoalsTab goals={goals} setGoals={setGoals} wallets={wallets} formatNGN={formatNGN} token={token} />}
+            {activeTab === 'subscriptions' && <SubscriptionsTab subscriptions={subscriptions} setSubscriptions={setSubscriptions} token={token} formatNGN={formatNGN} />}
             {activeTab === 'price-db' && <PriceDbTab token={token} formatNGN={formatNGN} />}
             {activeTab === 'insights' && <InsightsTab token={token} />}
           </>

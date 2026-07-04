@@ -283,3 +283,42 @@ def create_price_log(req: schemas.PriceLogCreate, db: Session = Depends(database
     db.commit()
     db.refresh(log)
     return log
+
+@router.get("/subscriptions", response_model=List[schemas.SubscriptionResponse])
+def get_subscriptions(db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
+    return FinanceRepository.get_subscriptions(db)
+
+@router.post("/subscriptions", response_model=schemas.SubscriptionResponse)
+def create_subscription(req: schemas.SubscriptionBase, db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
+    return FinanceRepository.create_subscription(db, req.dict())
+
+@router.delete("/subscriptions/{sub_id}")
+def delete_subscription(sub_id: int, db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
+    FinanceRepository.delete_subscription(db, sub_id)
+    return {"message": "Subscription deleted"}
+
+@router.post("/subscriptions/{sub_id}/pay", response_model=schemas.SubscriptionResponse)
+def pay_subscription(sub_id: int, db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
+    sub = FinanceRepository.get_subscription_by_id(db, sub_id)
+    if not sub:
+        raise HTTPException(status_code=404, detail="Subscription not found")
+    
+    from datetime import timedelta
+    # Advance the due date
+    if sub.cycle.lower() == 'weekly':
+        sub.next_due_date = sub.next_due_date + timedelta(days=7)
+    elif sub.cycle.lower() == 'yearly':
+        sub.next_due_date = sub.next_due_date.replace(year=sub.next_due_date.year + 1)
+    else: # default monthly
+        # simple advance month
+        month = sub.next_due_date.month
+        year = sub.next_due_date.year
+        if month == 12:
+            month = 1
+            year += 1
+        else:
+            month += 1
+        # handled simply without calendar edge cases for now, or just use timedelta(days=30)
+        sub.next_due_date = sub.next_due_date + timedelta(days=30)
+
+    return FinanceRepository.update_subscription(db, sub)
