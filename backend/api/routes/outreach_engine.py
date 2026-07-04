@@ -149,14 +149,15 @@ async def fill_queue(payload: dict, db: Session = Depends(database.get_db), toke
     n = payload.get("count", 10)
     
     # Get admins already in queue to avoid duplicates
-    queued_ids = {q.admin_lead_id for q in db.query(models.OutreachQueue).filter(
+    queued_ids = [q.admin_lead_id for q in db.query(models.OutreachQueue).filter(
         models.OutreachQueue.status.in_(["pending", "approved"])
-    ).all()}
+    ).all()]
     
-    fresh_admins = db.query(models.AdminLead).filter(
-        models.AdminLead.status == "fresh",
-        ~models.AdminLead.id.in_(queued_ids)
-    ).order_by(models.AdminLead.created_at).limit(n).all()
+    query = db.query(models.AdminLead).filter(models.AdminLead.status == "fresh")
+    if queued_ids:
+        query = query.filter(~models.AdminLead.id.in_(queued_ids))
+    
+    fresh_admins = query.order_by(models.AdminLead.created_at).limit(n).all()
     
     if not fresh_admins:
         return {"status": "no_fresh_admins", "generated": 0}
