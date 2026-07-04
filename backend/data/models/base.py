@@ -1,3 +1,4 @@
-from sqlalchemy.ext.declarative import declarative_base
+# Single source of truth — re-export from database so all models share one Base
+from data.database import Base
 
-Base = declarative_base()
+__all__ = ["Base"]
