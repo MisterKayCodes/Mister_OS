@@ -1,8 +1,26 @@
 // Rule: Max 200 lines per file — split if exceeded
-import React from 'react';
-import { ArrowUpRight, ArrowDownRight, Save } from 'lucide-react';
+import React, { useState } from 'react';
+import { ArrowUpRight, ArrowDownRight, Save, Trash2, Loader2 } from 'lucide-react';
+import { deleteTransactionApi } from '../../../utils/financeApi';
+import { useToast } from '../../../context/ToastContext';
 
-export default function TransactionsTab({ transactions, formatNGN }) {
+export default function TransactionsTab({ transactions, formatNGN, token, fetchAll }) {
+  const { showToast } = useToast();
+  const [deletingId, setDeletingId] = useState(null);
+
+  const handleDelete = async (id) => {
+    try {
+      setDeletingId(id);
+      await deleteTransactionApi(id, token);
+      showToast("Transaction deleted successfully", "success");
+      if (fetchAll) await fetchAll(); // Refresh overview and transactions
+    } catch (err) {
+      showToast(err.message, "error");
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   if (transactions.length === 0) {
     return <div className="text-gray-400 text-sm p-4 bg-white rounded-xl border border-gray-100">No transactions logged yet. Use /spend, /income, or /save in your notes!</div>;
   }
@@ -35,15 +53,25 @@ export default function TransactionsTab({ transactions, formatNGN }) {
               </div>
             </div>
             
-            <div className="text-right">
-              <p className={`font-bold text-sm ${isIncome ? 'text-green-600' : isExpense ? 'text-red-600' : 'text-blue-600'}`}>
-                {isIncome ? '+' : '-'}{formatNGN(tx.amount_naira)}
-              </p>
-              {tx.original_currency !== 'NGN' && (
-                <p className="text-[11px] text-gray-400 mt-0.5">
-                  ({tx.original_amount} {tx.original_currency} @ ₦{tx.exchange_rate})
+            <div className="text-right flex items-center justify-end gap-3">
+              <div>
+                <p className={`font-bold text-sm ${isIncome ? 'text-green-600' : isExpense ? 'text-red-600' : 'text-blue-600'}`}>
+                  {isIncome ? '+' : '-'}{formatNGN(tx.amount_naira)}
                 </p>
-              )}
+                {tx.original_currency !== 'NGN' && (
+                  <p className="text-[11px] text-gray-400 mt-0.5">
+                    ({tx.original_amount} {tx.original_currency} @ ₦{tx.exchange_rate})
+                  </p>
+                )}
+              </div>
+              <button 
+                onClick={() => handleDelete(tx.id)} 
+                disabled={deletingId === tx.id}
+                className="p-1.5 text-red-400 hover:bg-red-50 hover:text-red-600 rounded-lg transition disabled:opacity-50"
+                title="Delete transaction"
+              >
+                {deletingId === tx.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+              </button>
             </div>
           </div>
         );

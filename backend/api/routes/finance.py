@@ -85,6 +85,47 @@ def update_default_wallet(req: DefaultWalletUpdate, db: Session = Depends(databa
 def get_transactions(db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
     return db.query(models.Transaction).order_by(models.Transaction.date.desc()).all()
 
+@router.delete("/transactions/{tx_id}")
+def delete_transaction(tx_id: int, db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
+    tx = db.query(models.Transaction).filter(models.Transaction.id == tx_id).first()
+    if not tx:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+        
+    if tx.note_id:
+        note = db.query(models.Note).filter(models.Note.id == tx.note_id).first()
+        if note:
+            # Re-parse to find the exact line to remove
+            from core.parsers.finance_parser import FinanceParser
+            lines = note.content.split('\n')
+            new_lines = []
+            deleted = False
+            
+            for line in lines:
+                if not deleted:
+                    parsed_list = FinanceParser.parse_note_content(line)
+                    if parsed_list:
+                        p = parsed_list[0]
+                        # Check if it's the matching transaction
+                        if (p["type"] == tx.type and 
+                            p["amount_naira"] == tx.amount_naira and 
+                            p["description"] == tx.description):
+                            deleted = True
+                            continue # skip this line
+                new_lines.append(line)
+                
+            if deleted:
+                note.content = '\n'.join(new_lines)
+                db.commit()
+                # Run sync_note_transactions to reverse wallet and delete from DB
+                from services.finance_service import FinanceService
+                FinanceService.sync_note_transactions(db, note.id, note.content)
+                return {"message": "Transaction deleted successfully"}
+                
+    # Fallback if not linked to a note or not found in note
+    db.delete(tx)
+    db.commit()
+    return {"message": "Transaction deleted"}
+
 # --- Wallets ---
 @router.get("/wallets", response_model=List[schemas.WalletResponse])
 def get_wallets(db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):

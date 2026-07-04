@@ -117,7 +117,7 @@ export default function FinanceApp({ token, onBack }) {
               </div>
             )}
 
-            {activeTab === 'transactions' && <TransactionsTab transactions={transactions} formatNGN={formatNGN} />}
+            {activeTab === 'transactions' && <TransactionsTab transactions={transactions} formatNGN={formatNGN} token={token} fetchAll={fetchAll} />}
             {activeTab === 'wallets' && <WalletsTab wallets={wallets} setWallets={setWallets} formatNGN={formatNGN} token={token} />}
             {activeTab === 'goals' && <GoalsTab goals={goals} setGoals={setGoals} wallets={wallets} formatNGN={formatNGN} token={token} />}
             {activeTab === 'price-db' && <PriceDbTab token={token} formatNGN={formatNGN} />}

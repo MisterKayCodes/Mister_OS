@@ -5,13 +5,15 @@ import { useToast } from '../../context/ToastContext';
 
 export default function OmniChat({ token, onBack }) {
   const [sessions, setSessions] = useState([]);
-  const [messages, setMessages] = useState([{ role: "assistant", content: "Hello! I am Mister. I have full access to your notebook and expenses. What would you like to know?" }]);
+  const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [isBotThinking, setIsBotThinking] = useState(false);
+  const [isSessionLoading, setIsSessionLoading] = useState(true);
   const [sessionId, setSessionId] = useState(null);
   const [showHistory, setShowHistory] = useState(false);
   const { showToast } = useToast();
   const bottomRef = useRef(null);
+  const isInitialMount = useRef(true);
 
   useEffect(() => {
     fetchSessions();
@@ -23,15 +25,22 @@ export default function OmniChat({ token, onBack }) {
       setSessions(data);
       if (data.length > 0 && !sessionId) {
         loadSession(data[0].id);
+      } else {
+        // No sessions — just show the welcome message instantly
+        setMessages([{ role: "assistant", content: "Hello! I am Mister. I have full access to your notebook and expenses. What would you like to know?" }]);
+        setIsSessionLoading(false);
       }
     } catch (err) {
       console.error(err);
+      setIsSessionLoading(false);
     }
   };
 
   const loadSession = async (id) => {
-    setIsLoading(true);
+    setIsSessionLoading(true);
+    setMessages([]);
     setSessionId(id);
+    isInitialMount.current = true;
     try {
       const data = await getChatMessagesApi(id, token);
       if (data.length > 0) {
@@ -40,11 +49,10 @@ export default function OmniChat({ token, onBack }) {
         setMessages([{ role: "assistant", content: "Hello! I am Mister." }]);
       }
       setShowHistory(false);
-      isInitialMount.current = true;
     } catch (err) {
       showToast(err.message, "error");
     } finally {
-      setIsLoading(false);
+      setIsSessionLoading(false);
     }
   };
 
@@ -52,28 +60,30 @@ export default function OmniChat({ token, onBack }) {
     setSessionId(null);
     setMessages([{ role: "assistant", content: "Hello! I am Mister. I have full access to your notebook and expenses. What would you like to know?" }]);
     setShowHistory(false);
-    isInitialMount.current = true;
+    isInitialMount.current = false; // No animation needed, chat is already at bottom (single message)
   };
 
-  const isInitialMount = useRef(true);
-
   useEffect(() => {
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
-      bottomRef.current?.scrollIntoView({ behavior: 'auto' });
-    } else {
-      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (!isSessionLoading) {
+      if (isInitialMount.current) {
+        // Instant snap to bottom when a session finishes loading
+        isInitialMount.current = false;
+        bottomRef.current?.scrollIntoView({ behavior: 'instant' });
+      } else {
+        // Smooth scroll only for genuinely new messages
+        bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }
     }
-  }, [messages]);
+  }, [messages, isSessionLoading]);
 
   const handleSend = async (e) => {
     e.preventDefault();
-    if (!input.trim() || isLoading) return;
+    if (!input.trim() || isBotThinking) return;
 
     const userMessage = input.trim();
     setInput("");
     setMessages(prev => [...prev, { role: "user", content: userMessage }]);
-    setIsLoading(true);
+    setIsBotThinking(true);
 
     try {
       const response = await sendOmniChatApi(userMessage, sessionId, token);
@@ -85,7 +95,7 @@ export default function OmniChat({ token, onBack }) {
     } catch (err) {
       showToast(err.message, "error");
     } finally {
-      setIsLoading(false);
+      setIsBotThinking(false);
     }
   };
 
@@ -125,34 +135,43 @@ export default function OmniChat({ token, onBack }) {
         </div>
 
         {/* Chat Area */}
-        <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 bg-gray-50">
-          {messages.map((msg, i) => (
-            <div key={i} className={`flex gap-4 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
-                msg.role === 'user' ? 'bg-gray-800 text-white' : 'bg-purple-600 text-white'
-              }`}>
-                {msg.role === 'user' ? <User size={16} /> : <Bot size={16} />}
-              </div>
-              <div className={`max-w-[80%] rounded-2xl px-5 py-3 ${
-                msg.role === 'user' ? 'bg-gray-800 text-white rounded-tr-none' : 'bg-white shadow-sm border border-gray-200 text-gray-800 rounded-tl-none'
-              }`}>
-                <p className="whitespace-pre-wrap text-sm leading-relaxed">{msg.content}</p>
-              </div>
+        <div className="flex-1 overflow-y-auto p-4 md:p-8 bg-gray-50">
+          {isSessionLoading ? (
+            <div className="h-full flex flex-col items-center justify-center gap-3 text-purple-400">
+              <Loader size={28} className="animate-spin" />
+              <p className="text-sm font-medium">Loading your chat...</p>
             </div>
-          ))}
-          {isLoading && (
-            <div className="flex gap-4 flex-row">
-              <div className="w-8 h-8 rounded-full bg-purple-600 text-white flex items-center justify-center shrink-0">
-                <Bot size={16} />
-              </div>
-              <div className="bg-white shadow-sm border border-gray-200 text-gray-500 rounded-2xl rounded-tl-none px-5 py-3 flex items-center gap-2">
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:0.2s]" />
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:0.4s]" />
-              </div>
+          ) : (
+            <div className="space-y-6">
+              {messages.map((msg, i) => (
+                <div key={i} className={`flex gap-4 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+                    msg.role === 'user' ? 'bg-gray-800 text-white' : 'bg-purple-600 text-white'
+                  }`}>
+                    {msg.role === 'user' ? <User size={16} /> : <Bot size={16} />}
+                  </div>
+                  <div className={`max-w-[80%] rounded-2xl px-5 py-3 ${
+                    msg.role === 'user' ? 'bg-gray-800 text-white rounded-tr-none' : 'bg-white shadow-sm border border-gray-200 text-gray-800 rounded-tl-none'
+                  }`}>
+                    <p className="whitespace-pre-wrap text-sm leading-relaxed">{msg.content}</p>
+                  </div>
+                </div>
+              ))}
+              {isBotThinking && (
+                <div className="flex gap-4 flex-row">
+                  <div className="w-8 h-8 rounded-full bg-purple-600 text-white flex items-center justify-center shrink-0">
+                    <Bot size={16} />
+                  </div>
+                  <div className="bg-white shadow-sm border border-gray-200 text-gray-500 rounded-2xl rounded-tl-none px-5 py-3 flex items-center gap-2">
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:0.2s]" />
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:0.4s]" />
+                  </div>
+                </div>
+              )}
+              <div ref={bottomRef} />
             </div>
           )}
-          <div ref={bottomRef} />
         </div>
 
         {/* Input Area */}
@@ -167,7 +186,7 @@ export default function OmniChat({ token, onBack }) {
             />
             <button 
               type="submit" 
-              disabled={!input.trim() || isLoading}
+              disabled={!input.trim() || isBotThinking}
               className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-purple-600 text-white flex items-center justify-center hover:bg-purple-700 transition disabled:opacity-50"
             >
               <Send size={14} className="-ml-0.5" />

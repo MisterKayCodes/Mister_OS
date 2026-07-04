@@ -16,6 +16,15 @@ export const getTransactions = async (token) => {
   return await res.json();
 };
 
+export const deleteTransactionApi = async (txId, token) => {
+  const res = await fetch(`${API_BASE}/transactions/${txId}`, {
+    method: "DELETE",
+    headers: { "X-Master-Token": token }
+  });
+  if (!res.ok) throw new Error("Failed to delete transaction");
+  return await res.json();
+};
+
 export const getWallets = async (token) => {
   const res = await fetch(`${API_BASE}/wallets`, { headers: { "X-Master-Token": token } });
   if (!res.ok) throw new Error("Failed to fetch wallets");
