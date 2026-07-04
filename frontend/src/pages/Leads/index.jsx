@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Target, Search, ChevronLeft, BarChart2, Send, Crosshair, MessageSquare } from 'lucide-react';
 import { fetchLeadsApi, createLeadApi, fetchPendingDraftsApi } from '../../utils/api';
-
+import { runHuntWorkerApi } from '../../utils/huntsApi';
 // ─── Tab Components ──────────────────────────────────────────────────
 import ActiveTab from './components/ActiveTab.jsx';
 import ChatLibraryTab from './components/ChatLibraryTab.jsx';
@@ -21,6 +21,8 @@ export default function LeadsApp({ token, onBack }) {
   const [drafts, setDrafts]               = useState([]);
   const [newLeadUsername, setNewLeadUsername] = useState('');
   const [huntChannel, setHuntChannel]     = useState('');
+  const [huntLimit, setHuntLimit]         = useState(10);
+  const [isHunting, setIsHunting]         = useState(false);
   const [isLoading, setIsLoading]         = useState(true);
 
   useEffect(() => {
@@ -39,10 +41,18 @@ export default function LeadsApp({ token, onBack }) {
     } catch (err) { alert(err.message); }
   };
 
-  const handleHunt = () => {
-    if (!huntChannel.trim()) return;
-    alert(`Run: python telegram_service/hunt_worker.py --seed ${huntChannel.trim()} --limit 10`);
-    setHuntChannel('');
+  const handleHunt = async () => {
+    if (!huntChannel.trim() || isHunting) return;
+    setIsHunting(true);
+    try {
+      await runHuntWorkerApi(huntChannel.trim(), huntLimit, token);
+      alert(`Hunt started for ${huntChannel.trim()}! Check the Active Pipeline or Hunts tab in a few minutes.`);
+      setHuntChannel('');
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setIsHunting(false);
+    }
   };
 
   return (
@@ -74,9 +84,19 @@ export default function LeadsApp({ token, onBack }) {
             onKeyDown={e => e.key === 'Enter' && handleHunt()}
             className="flex-1 min-w-0 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-red-400 transition"
           />
-          <button onClick={handleHunt}
-            className="shrink-0 flex items-center gap-1.5 bg-red-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-red-600 transition">
-            <Search size={14} /> Hunt
+          <input
+            id="hunt-limit-input"
+            type="number"
+            min="1"
+            max="100"
+            value={huntLimit}
+            onChange={e => setHuntLimit(parseInt(e.target.value) || 10)}
+            className="w-20 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-red-400 transition"
+            title="Channel Scan Limit"
+          />
+          <button onClick={handleHunt} disabled={isHunting}
+            className={`shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition ${isHunting ? 'bg-red-400 cursor-not-allowed' : 'bg-red-500 hover:bg-red-600'} text-white`}>
+            {isHunting ? <span className="animate-pulse">Starting...</span> : <><Search size={14} /> Hunt</>}
           </button>
         </div>
 

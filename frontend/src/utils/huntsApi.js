@@ -107,3 +107,15 @@ export const stopOutreachApi = async () => {
   return await res.json();
 };
 
+export const runHuntWorkerApi = async (seed, limit, token) => {
+  const res = await fetch(`${HUNTS_BASE}/run`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Master-Token": token },
+    body: JSON.stringify({ seed, limit }),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.detail || "Failed to start hunt worker");
+  }
+  return await res.json();
+};

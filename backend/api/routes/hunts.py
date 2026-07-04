@@ -6,6 +6,8 @@ from data import models, schemas, database
 from api.dependencies import get_master_token
 from providers.llm_provider import LLMProvider
 import json
+import subprocess
+import os
 
 router = APIRouter(prefix="/api/hunts", tags=["Hunts"])
 
@@ -228,4 +230,25 @@ Example:
         return created_templates
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/run")
+def run_hunt_worker(payload: dict, token: str = Depends(get_master_token)):
+    seed = payload.get("seed")
+    limit = payload.get("limit", 10)
+    if not seed:
+        raise HTTPException(status_code=400, detail="Seed channel required")
+    
+    # Path to telegram_service directory
+    telegram_service_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'telegram_service'))
+    hunt_script = os.path.join(telegram_service_dir, "hunt_worker.py")
+    
+    try:
+        # Popen runs the process in the background and returns immediately
+        subprocess.Popen(
+            ["python3", hunt_script, "--seed", seed, "--limit", str(limit)],
+            cwd=telegram_service_dir
+        )
+        return {"status": "started", "message": f"Hunt worker started for {seed} with limit {limit}"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to start worker: {str(e)}")
 
