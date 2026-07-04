@@ -143,10 +143,13 @@ def get_queue(status: str = "pending", db: Session = Depends(database.get_db), t
         ))
     return result
 
+class QueueFillRequest(BaseModel):
+    count: int = 10
+
 @router.post("/queue/fill")
-async def fill_queue(payload: dict, db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
+async def fill_queue(req: QueueFillRequest, db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
     """Generate AI openers for the next N fresh admins and add them to the queue."""
-    n = payload.get("count", 10)
+    n = req.count
     
     # Get admins already in queue to avoid duplicates
     queued_ids = [q.admin_lead_id for q in db.query(models.OutreachQueue).filter(
