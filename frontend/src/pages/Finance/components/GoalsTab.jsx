@@ -108,7 +108,7 @@ export default function GoalsTab({ goals, setGoals, wallets, formatNGN, token })
       setGoals([...goals, g]);
       setForm({ name: '', price_min: '', price_max: '', wallet_id: '' });
       setShowForm(false);
-      showToast('Goal added! Let's get it 🎯', 'success');
+      showToast("Goal added! Let's get it 🎯", 'success');
     } catch (err) { showToast(err.message, 'error'); }
   };
 
