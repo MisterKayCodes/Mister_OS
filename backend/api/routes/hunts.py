@@ -63,18 +63,29 @@ def get_admins(status: str = None, db: Session = Depends(database.get_db), token
 @router.post("/admins/webhook")
 def ingest_admin(payload: dict, db: Session = Depends(database.get_db)):
     """Called by the hunt_worker when an admin username is found."""
-    username = payload.get("username", "").strip().lstrip("@")
+    # 1 & 4. Normalise username (lowercase, no @)
+    username = payload.get("username", "").strip().lstrip("@").lower()
     if not username:
         raise HTTPException(status_code=400, detail="username required")
 
-    # Blacklist check: if already dead/closed in Lead table, skip
-    existing_lead = db.query(models.Lead).filter(models.Lead.username == username).first()
-    if existing_lead and existing_lead.status in ("Dead", "Closed"):
-        return {"status": "blacklisted"}
+    from sqlalchemy import func
 
-    existing = db.query(models.AdminLead).filter(models.AdminLead.username == username).first()
-    if existing:
-        return {"status": "already_exists", "id": existing.id}
+    # 2 & 3. Blacklist check: if already in Lead table (any active/dead pipeline status), skip
+    # We strip '@' from the db column in the query just in case it was saved with one
+    existing_lead = db.query(models.Lead).filter(
+        func.lower(func.replace(models.Lead.username, '@', '')) == username
+    ).first()
+    
+    if existing_lead:
+        return {"status": "blacklisted", "reason": f"Already in CRM pipeline as {existing_lead.status}"}
+
+    # 3. Check AdminLead table comprehensively (case-insensitive)
+    existing_admin = db.query(models.AdminLead).filter(
+        func.lower(func.replace(models.AdminLead.username, '@', '')) == username
+    ).first()
+    
+    if existing_admin:
+        return {"status": "already_exists", "id": existing_admin.id, "current_status": existing_admin.status}
 
     # Lookup channel by tg_id if provided
     channel_id = payload.get("channel_id")
