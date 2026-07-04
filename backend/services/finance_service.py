@@ -20,10 +20,25 @@ class FinanceService:
         existing_txs = FinanceRepository.get_transactions_by_note(db, note_id)
         existing_pool = list(existing_txs)
 
-        # 4. Clear old Memory
+        # 4. Handle Wallet Deductions
+        from data import models
+        settings = db.query(models.FinanceSettings).first()
+        default_wallet = None
+        if settings and settings.default_wallet_id:
+            default_wallet = db.query(models.Wallet).filter(models.Wallet.id == settings.default_wallet_id).first()
+
+        # Reverse old transactions from wallet
+        if default_wallet:
+            for ex_tx in existing_pool:
+                if ex_tx.type == "expense":
+                    default_wallet.balance += ex_tx.amount_naira
+                elif ex_tx.type == "income":
+                    default_wallet.balance -= ex_tx.amount_naira
+
+        # 5. Clear old Memory
         FinanceRepository.delete_transactions_by_note(db, note_id)
 
-        # 5. Save new Memory
+        # 6. Save new Memory
         import datetime
         for tx_data in parsed_txs:
             tx_type = tx_data["type"]
@@ -43,12 +58,22 @@ class FinanceService:
                 else:
                     tx_data["parsed_date"] = datetime.datetime.now()
             
+            # Apply new transactions to wallet
+            if default_wallet:
+                if tx_type == "expense":
+                    default_wallet.balance -= naira_amt
+                elif tx_type == "income":
+                    default_wallet.balance += naira_amt
+            
             # Re-map key for DB
             db_date = tx_data.pop("parsed_date")
             tx_data["date"] = db_date
             tx_data["note_id"] = note_id
             
             FinanceRepository.create_transaction(db, tx_data)
+            
+        if default_wallet:
+            db.commit()
 
     @staticmethod
     def execute_autonomous_commands(db: Session, llm_reply: str) -> str:

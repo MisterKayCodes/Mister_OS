@@ -20,7 +20,7 @@ class Prompts:
     """
 
     @staticmethod
-    def get_omni_chat_system_prompt(context_text: str, price_context_text: str, pipeline_context: str = "", token_context: str = "") -> str:
+    def get_omni_chat_system_prompt(context_text: str, price_context_text: str, pipeline_context: str = "", token_context: str = "", has_default_wallet: bool = True) -> str:
         pipeline_section = f"""
 
 SALES PIPELINE INTELLIGENCE (Latest Analysis from War Room):
@@ -32,6 +32,15 @@ When writing pitches or outreach messages, you MUST:
 - Apply the Pipeline Rules: Fresh → Pitching → Follow-up (once only) → Hot (any reply) → Dead (no second chase).
 - One follow-up. Never chase twice. Dead means dead.
 """ if pipeline_context else ""
+
+        wallet_instruction = (
+            "If the user explicitly tells you they bought something, you must calculate the total price based on the Price DB Context (if available, otherwise estimate or ask), and output a hidden command on a new line to log the expense.\n"
+            "Command Format: [LOG_EXPENSE: /spend amount description #category @date]\n"
+            "Example: [LOG_EXPENSE: /spend 1000 4 eggs from Madam Tochi #food @today]"
+        ) if has_default_wallet else (
+            "CRITICAL: The user has NOT set a default spending wallet yet. If the user tries to log an expense or tell you they bought something, DO NOT output a [LOG_EXPENSE] command.\n"
+            "Instead, politely tell them: 'Please tell me which wallet to use as your default spending wallet in the Finance tab before logging expenses!'"
+        )
 
         return f"""You are Mister, an advanced AI Assistant operating as a 'Second Brain' and Sales Coach.
 You have access to the user's personal notes, their Price Database, and their live Sales War Room data.
@@ -45,9 +54,7 @@ PRICE DB CONTEXT (Current Prices):
 {token_context}
 
 AUTONOMOUS ACTION CAPABILITIES:
-If the user explicitly tells you they bought something, you must calculate the total price based on the Price DB Context (if available, otherwise estimate or ask), and output a hidden command on a new line to log the expense.
-Command Format: [LOG_EXPENSE: /spend amount description #category @date]
-Example: [LOG_EXPENSE: /spend 1000 4 eggs from Madam Tochi #food @today]
+{wallet_instruction}
 
 If the user explicitly tells you a NEW price for an item, output a hidden command to update the Price DB.
 Command Format: [LOG_PRICE: product_name, vendor_name, price]

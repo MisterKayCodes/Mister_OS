@@ -15,6 +15,12 @@ class WalletCreate(BaseModel):
     color: str
     balance: Optional[int] = 0
 
+class WalletUpdate(BaseModel):
+    name: Optional[str] = None
+    type: Optional[str] = None
+    color: Optional[str] = None
+    balance: Optional[int] = None
+
 class WalletDeposit(BaseModel):
     amount: int
 
@@ -29,6 +35,9 @@ class DebtCreate(BaseModel):
     person: str
     amount: int
     description: str
+
+class DefaultWalletUpdate(BaseModel):
+    wallet_id: Optional[int] = None
 
 # --- Overview ---
 @router.get("/overview")
@@ -48,6 +57,28 @@ def get_overview(db: Session = Depends(database.get_db), token: str = Depends(ge
         "month_saved": saved,
         "savings_rate": round((saved / income * 100), 1) if income > 0 else 0
     }
+
+# --- Settings ---
+@router.get("/settings")
+def get_finance_settings(db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
+    settings = db.query(models.FinanceSettings).first()
+    if not settings:
+        settings = models.FinanceSettings()
+        db.add(settings)
+        db.commit()
+        db.refresh(settings)
+    return settings
+
+@router.put("/settings/default-wallet")
+def update_default_wallet(req: DefaultWalletUpdate, db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
+    settings = db.query(models.FinanceSettings).first()
+    if not settings:
+        settings = models.FinanceSettings()
+        db.add(settings)
+    settings.default_wallet_id = req.wallet_id
+    db.commit()
+    db.refresh(settings)
+    return settings
 
 # --- Transactions ---
 @router.get("/transactions", response_model=List[schemas.TransactionResponse])
@@ -75,6 +106,20 @@ def deposit_to_wallet(wallet_id: int, req: WalletDeposit, db: Session = Depends(
     w.balance += req.amount
     db.commit()
     return {"message": "Balance updated", "balance": w.balance}
+
+@router.put("/wallets/{wallet_id}")
+def update_wallet(wallet_id: int, req: WalletUpdate, db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
+    w = db.query(models.Wallet).filter(models.Wallet.id == wallet_id).first()
+    if not w:
+        raise HTTPException(status_code=404, detail="Wallet not found")
+    
+    update_data = req.dict(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(w, key, value)
+        
+    db.commit()
+    db.refresh(w)
+    return w
 
 @router.delete("/wallets/{wallet_id}")
 def delete_wallet(wallet_id: int, db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):

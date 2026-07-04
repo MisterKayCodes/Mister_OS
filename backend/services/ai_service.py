@@ -71,7 +71,9 @@ class AIService:
             pass
 
         # 5. Build the System Prompt (Brain)
-        system_prompt = Prompts.get_omni_chat_system_prompt(context_text, price_context_text, pipeline_context, token_context)
+        settings = db.query(models.FinanceSettings).first()
+        has_default_wallet = bool(settings and settings.default_wallet_id)
+        system_prompt = Prompts.get_omni_chat_system_prompt(context_text, price_context_text, pipeline_context, token_context, has_default_wallet)
         
         # 6. Handle Chat Session History (Memory)
         if not session_id:

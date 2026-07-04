@@ -40,6 +40,7 @@ export default function OmniChat({ token, onBack }) {
         setMessages([{ role: "assistant", content: "Hello! I am Mister." }]);
       }
       setShowHistory(false);
+      isInitialMount.current = true;
     } catch (err) {
       showToast(err.message, "error");
     } finally {
@@ -51,10 +52,18 @@ export default function OmniChat({ token, onBack }) {
     setSessionId(null);
     setMessages([{ role: "assistant", content: "Hello! I am Mister. I have full access to your notebook and expenses. What would you like to know?" }]);
     setShowHistory(false);
+    isInitialMount.current = true;
   };
 
+  const isInitialMount = useRef(true);
+
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      bottomRef.current?.scrollIntoView({ behavior: 'auto' });
+    } else {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
   }, [messages]);
 
   const handleSend = async (e) => {

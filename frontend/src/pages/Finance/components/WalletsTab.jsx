@@ -1,7 +1,7 @@
 // Rule: Max 200 lines per file — split if exceeded
-import React, { useState } from 'react';
-import { Wallet, Plus, Trash2, ArrowDownCircle, X } from 'lucide-react';
-import { createWalletApi, deleteWalletApi, depositToWalletApi } from '../../../utils/financeApi';
+import React, { useState, useEffect } from 'react';
+import { Wallet, Plus, Trash2, ArrowDownCircle, X, Edit2, Star } from 'lucide-react';
+import { createWalletApi, deleteWalletApi, depositToWalletApi, updateWalletApi, getFinanceSettingsApi, setDefaultWalletApi } from '../../../utils/financeApi';
 import { useToast } from '../../../context/ToastContext';
 
 const TYPE_STYLES = {
@@ -15,9 +15,17 @@ const WALLET_COLORS = ['#6366f1','#10b981','#f59e0b','#ef4444','#3b82f6','#8b5cf
 export default function WalletsTab({ wallets, setWallets, formatNGN, token }) {
   const [showForm, setShowForm] = useState(false);
   const [depositTarget, setDepositTarget] = useState(null);
+  const [editTarget, setEditTarget] = useState(null);
   const [depositAmount, setDepositAmount] = useState('');
   const [form, setForm] = useState({ name: '', type: 'liquid', color: WALLET_COLORS[0], balance: '' });
+  const [defaultWalletId, setDefaultWalletId] = useState(null);
   const { showToast } = useToast();
+
+  useEffect(() => {
+    getFinanceSettingsApi(token).then(res => {
+      if (res.default_wallet_id) setDefaultWalletId(res.default_wallet_id);
+    }).catch(console.error);
+  }, [token]);
 
   const handleCreate = async (e) => {
     e.preventDefault();
@@ -47,6 +55,31 @@ export default function WalletsTab({ wallets, setWallets, formatNGN, token }) {
       setDepositAmount('');
       showToast('Balance updated!', 'success');
     } catch (err) { showToast(err.message, 'error'); }
+  };
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    if (!editTarget) return;
+    try {
+      const res = await updateWalletApi(editTarget.id, { name: form.name, type: form.type, color: form.color }, token);
+      setWallets(wallets.map(w => w.id === res.id ? res : w));
+      setEditTarget(null);
+      setForm({ name: '', type: 'liquid', color: WALLET_COLORS[0], balance: '' });
+      showToast('Wallet updated!', 'success');
+    } catch (err) { showToast(err.message, 'error'); }
+  };
+
+  const handleSetDefault = async (id) => {
+    try {
+      await setDefaultWalletApi(id, token);
+      setDefaultWalletId(id);
+      showToast('Default spending wallet updated!', 'success');
+    } catch (err) { showToast(err.message, 'error'); }
+  };
+
+  const openEdit = (w) => {
+    setEditTarget(w);
+    setForm({ name: w.name, type: w.type, color: w.color, balance: w.balance });
   };
 
   return (
@@ -94,11 +127,18 @@ export default function WalletsTab({ wallets, setWallets, formatNGN, token }) {
               <div className="absolute top-0 left-0 w-1 h-full rounded-l-2xl" style={{ background: w.color }} />
               <div className="flex justify-between items-start mb-3">
                 <div>
-                  <p className="font-bold text-gray-800">{w.name}</p>
+                  <p className="font-bold text-gray-800 flex items-center gap-2">
+                    {w.name}
+                    {defaultWalletId === w.id && w.type === 'liquid' && <Star size={14} className="text-yellow-400 fill-yellow-400" title="Default Spending Wallet" />}
+                  </p>
                   <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${styles.badge}`}>{w.type}</span>
                 </div>
                 <div className="flex gap-1">
+                  {w.type === 'liquid' && defaultWalletId !== w.id && (
+                    <button onClick={() => handleSetDefault(w.id)} className="p-1.5 rounded-lg text-yellow-500 hover:bg-yellow-50 transition" title="Set as default spender"><Star size={16} /></button>
+                  )}
                   <button onClick={() => setDepositTarget(w)} className="p-1.5 rounded-lg text-blue-500 hover:bg-blue-50 transition" title="Update balance"><ArrowDownCircle size={16} /></button>
+                  <button onClick={() => openEdit(w)} className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 transition" title="Edit"><Edit2 size={16} /></button>
                   <button onClick={() => handleDelete(w.id)} className="p-1.5 rounded-lg text-red-400 hover:bg-red-50 transition" title="Delete"><Trash2 size={16} /></button>
                 </div>
               </div>
@@ -117,6 +157,32 @@ export default function WalletsTab({ wallets, setWallets, formatNGN, token }) {
             </div>
             <input type="number" value={depositAmount} onChange={e => setDepositAmount(e.target.value)} placeholder="Enter amount (₦)" className="w-full border border-gray-200 rounded-lg p-2 mb-4 focus:outline-none focus:ring-2 focus:ring-black text-sm" />
             <button onClick={handleDeposit} className="w-full bg-black text-white py-2 rounded-lg text-sm font-medium hover:bg-gray-800 transition">Update Balance</button>
+          </div>
+        </div>
+      )}
+
+      {editTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-semibold text-gray-800">Edit Wallet</h3>
+              <button onClick={() => { setEditTarget(null); setForm({ name: '', type: 'liquid', color: WALLET_COLORS[0], balance: '' }); }}><X size={18} /></button>
+            </div>
+            <form onSubmit={handleEditSubmit} className="flex flex-col gap-3">
+              <input required value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="Wallet name" className="border border-gray-200 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-black" />
+              <select value={form.type} onChange={e => setForm({...form, type: e.target.value})} className="border border-gray-200 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-black">
+                <option value="liquid">Liquid (Spendable)</option>
+                <option value="locked">Locked</option>
+                <option value="investment">Investment</option>
+              </select>
+              <div className="flex gap-2 items-center">
+                <span className="text-xs text-gray-500">Color:</span>
+                {WALLET_COLORS.map(c => (
+                  <button key={c} type="button" onClick={() => setForm({...form, color: c})} className={`w-6 h-6 rounded-full border-2 transition ${form.color === c ? 'border-black scale-110' : 'border-transparent'}`} style={{ background: c }} />
+                ))}
+              </div>
+              <button type="submit" className="w-full bg-black text-white py-2 rounded-lg text-sm font-medium hover:bg-gray-800 transition mt-2">Save Changes</button>
+            </form>
           </div>
         </div>
       )}
