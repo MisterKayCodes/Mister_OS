@@ -84,8 +84,8 @@ class FinanceService:
         """
         results = []
         
-        # Process [LOG_PRICE: product, vendor, price]
-        price_matches = re.findall(r"\[LOG_PRICE:\s*(.+?),\s*(.+?),\s*(\d+)\]", llm_reply)
+        # Process [LOG_PRICE: product, vendor, price] (forgiving of missing brackets)
+        price_matches = re.findall(r"\[?LOG_PRICE:\s*([^,]+?)\s*,\s*([^,]+?)\s*,\s*(\d+)(?:\]|\n|$)", llm_reply)
         for product_name, vendor_name, price in price_matches:
             product_name = product_name.strip()
             vendor_name = vendor_name.strip()
@@ -113,10 +113,10 @@ class FinanceService:
                     "error": str(e)
                 })
             
-        llm_reply = re.sub(r"\[LOG_PRICE:.*?\]\n?", "", llm_reply)
+        llm_reply = re.sub(r"\[?LOG_PRICE:.*?\]?(?:\n|$)", "", llm_reply)
         
-        # Process [LOG_EXPENSE: /spend ...]
-        expense_matches = re.findall(r"\[LOG_EXPENSE:\s*(.+?)\]", llm_reply)
+        # Process [LOG_EXPENSE: /spend ...] (forgiving of missing brackets)
+        expense_matches = re.findall(r"\[?LOG_EXPENSE:\s*([^\]\n]+)\]?", llm_reply)
         for cmd_str in expense_matches:
             from services.note_service import NoteService
             cmd_clean = cmd_str.strip()
@@ -175,5 +175,5 @@ class FinanceService:
                     "error": str(e)
                 })
             
-        llm_reply = re.sub(r"\[LOG_EXPENSE:.*?\]\n?", "", llm_reply)
+        llm_reply = re.sub(r"\[?LOG_EXPENSE:.*?\]?(?:\n|$)", "", llm_reply)
         return llm_reply.strip(), results
