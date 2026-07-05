@@ -40,7 +40,7 @@ function AppContent() {
 
   return (
     <PullToRefresh>
-      <div className="w-full h-screen bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-200">
+      <div className="w-full h-screen overflow-hidden overflow-x-hidden bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-200">
         {currentApp === 'dashboard' && <Dashboard onNavigate={navigate} onLogout={handleLogout} token={token} />}
         {currentApp === 'notes' && <NotesApp onBack={goHome} token={token} />}
         {currentApp === 'finance' && <FinanceApp onBack={goHome} token={token} />}

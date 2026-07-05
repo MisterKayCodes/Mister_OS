@@ -19,13 +19,13 @@ export default function Dashboard({ onNavigate, onLogout, token }) {
   ];
 
   return (
-    <div className="flex-1 w-full min-h-screen bg-gray-50 dark:bg-[#0a0a0a] text-gray-900 dark:text-white relative overflow-y-auto flex flex-col items-center">
+    <div className="flex flex-col w-full h-full overflow-y-auto overflow-x-hidden bg-gray-50 dark:bg-[#0a0a0a] text-gray-900 dark:text-white relative">
       {/* Background Mesh Gradient */}
       <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-purple-200 dark:bg-purple-600 rounded-full mix-blend-multiply filter blur-[150px] opacity-60 dark:opacity-40 animate-blob pointer-events-none"></div>
       <div className="absolute top-[20%] right-[-10%] w-[40%] h-[40%] bg-blue-200 dark:bg-blue-600 rounded-full mix-blend-multiply filter blur-[150px] opacity-60 dark:opacity-40 animate-blob animation-delay-2000 pointer-events-none"></div>
       <div className="absolute bottom-[-20%] left-[20%] w-[60%] h-[60%] bg-teal-200 dark:bg-teal-600 rounded-full mix-blend-multiply filter blur-[150px] opacity-50 dark:opacity-30 animate-blob animation-delay-4000 pointer-events-none"></div>
 
-      <div className="relative z-10 w-full max-w-6xl px-6 py-12 flex flex-col min-h-full">
+      <div className="relative z-10 w-full max-w-6xl mx-auto px-6 py-12 flex flex-col">
         {/* Header */}
         <div className="flex justify-between items-center mb-12 shrink-0">
           <div>
