@@ -81,7 +81,24 @@ async def finance_insights(db: Session = Depends(database.get_db), token: str = 
 async def can_i_afford(request: schemas.CanIAffordRequest, db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
     try:
         wallets = db.query(models.Wallet).all()
-        wallet_summary = "\n".join([f"- {w.name} ({w.type}): ₦{w.balance:,}" for w in wallets]) or "No wallets."
+
+        # Separate liquid (spendable now) from locked/investment (not easily accessible)
+        liquid_wallets = [w for w in wallets if w.type.lower() == 'liquid']
+        locked_wallets = [w for w in wallets if w.type.lower() in ('locked', 'investment', 'savings')]
+
+        liquid_total = sum(w.balance for w in liquid_wallets)
+        locked_total = sum(w.balance for w in locked_wallets)
+        grand_total = liquid_total + locked_total
+
+        liquid_lines = "\n".join([f"  - {w.name}: ₦{w.balance:,}" for w in liquid_wallets]) or "  None"
+        locked_lines = "\n".join([f"  - {w.name} ({w.type}): ₦{w.balance:,}" for w in locked_wallets]) or "  None"
+
+        wallet_summary = (
+            f"LIQUID (spendable right now) — Total: ₦{liquid_total:,}\n{liquid_lines}\n\n"
+            f"LOCKED/SAVINGS (not easily accessible) — Total: ₦{locked_total:,}\n{locked_lines}\n\n"
+            f"GRAND TOTAL: ₦{grand_total:,}"
+        )
+
         goals = db.query(models.Goal).filter(models.Goal.achieved == False).all()
         goal_summary = "\n".join([f"- {g.name}: ₦{g.price_min:,}–₦{g.price_max or g.price_min:,}" for g in goals]) or "No active goals."
         prompt = Prompts.get_affordability_prompt(request.query, wallet_summary, goal_summary)
