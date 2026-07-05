@@ -6,6 +6,7 @@ import Editor from '../../components/features/Editor';
 
 import FinanceApp from '../../pages/Finance';
 import LeadsApp from '../../pages/Leads';
+import KnowledgeApp from '../../pages/Knowledge';
 import OmniChat from '../../components/features/OmniChat';
 import SecurityModal from '../../components/features/SecurityModal';
 import useHomeState from './useHomeState';
@@ -15,7 +16,7 @@ export default function Home() {
 
   if (!state.isAuthenticated) return <AuthScreen onLogin={state.handleLogin} />;
 
-  const showSidebar = !state.activeNote && state.viewMode !== 'omnichat' && state.viewMode !== 'finance' && state.viewMode !== 'warroom';
+  const showSidebar = !state.activeNote && state.viewMode !== 'omnichat' && state.viewMode !== 'finance' && state.viewMode !== 'warroom' && state.viewMode !== 'knowledge';
 
   return (
     <div className="flex h-screen overflow-hidden text-gray-800 bg-[#f9f9f9] relative flex-col">
@@ -39,6 +40,7 @@ export default function Home() {
                 onDeleteFolder={state.handleDeleteFolder}
                 onViewExpenses={state.viewFinance}
                 onOpenWarRoom={state.viewWarRoom}
+                onOpenKnowledge={state.viewKnowledge}
                 onOpenOmniBrain={() => { state.setViewMode('omnichat'); state.setActiveNote(null); }}
                 onOpenSecurity={() => state.setShowSecurity(true)}
                 onDeleteNotes={state.handleDeleteNotes}
@@ -54,6 +56,8 @@ export default function Home() {
             <FinanceApp token={state.token} onBack={state.goBack} />
           ) : state.viewMode === 'warroom' ? (
             <LeadsApp token={state.token} onBack={state.goBack} />
+          ) : state.viewMode === 'knowledge' ? (
+            <KnowledgeApp token={state.token} onBack={state.goBack} />
           ) : state.activeNote ? (
             <>
               <Editor

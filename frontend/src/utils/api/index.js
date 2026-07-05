@@ -9,3 +9,4 @@ export * from './token';
 export * from './leads';
 export * from './drafts';
 export * from './analysis';
+export * from './knowledge';

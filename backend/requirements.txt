@@ -8,3 +8,5 @@ chromadb
 alembic
 Telethon==1.33.1
 requests==2.31.0
+yt-dlp
+youtube-transcript-api

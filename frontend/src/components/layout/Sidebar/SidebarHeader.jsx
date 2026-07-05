@@ -1,5 +1,5 @@
 import React from 'react';
-import { Edit2, DollarSign, Bot, CheckSquare, ChevronLeft, Shield, FolderPlus, Target } from 'lucide-react';
+import { Edit2, DollarSign, Bot, CheckSquare, ChevronLeft, Shield, FolderPlus, Target, BookOpen } from 'lucide-react';
 
 export default function SidebarHeader({
   showBack,
@@ -12,7 +12,8 @@ export default function SidebarHeader({
   onCreateNote,
   selectMode,
   setSelectMode,
-  setSelected
+  setSelected,
+  onOpenKnowledge
 }) {
   return (
     <div className="p-4 flex justify-between items-center border-b border-[#e0e0e0]">
@@ -37,6 +38,9 @@ export default function SidebarHeader({
         </button>
         <button onClick={onOpenWarRoom} className="text-red-500 hover:bg-red-50 transition p-1 rounded" title="War Room">
           <Target size={18} />
+        </button>
+        <button onClick={onOpenKnowledge} className="text-blue-500 hover:bg-blue-50 transition p-1 rounded" title="Knowledge Base">
+          <BookOpen size={18} />
         </button>
         <button 
           onClick={() => { setSelectMode(s => !s); setSelected([]); }} 

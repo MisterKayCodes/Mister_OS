@@ -1,12 +1,24 @@
 import { enqueue } from '../offlineQueue';
 
 const fallbackBase = `http://${window.location.hostname || "localhost"}:8011`;
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || fallbackBase;
+export const BASE_URL = import.meta.env.VITE_API_BASE_URL || fallbackBase;
 
 export const API_BASE = `${BASE_URL}/api/notes`;
 export const AI_BASE = `${BASE_URL}/api/ai`;
 export const LEADS_BASE = `${BASE_URL}/api/leads`;
 export const AUTH_BASE = `${BASE_URL}/api/auth`;
+
+export const checkConnectivity = async () => {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 4000);
+    const res = await fetch(`${BASE_URL}/`, { signal: controller.signal });
+    clearTimeout(timeoutId);
+    return res.ok;
+  } catch (err) {
+    return false;
+  }
+};
 
 export const NOTES_CACHE_KEY = 'mister_notes_cache';
 export const FOLDERS_CACHE_KEY = 'mister_folders_cache';

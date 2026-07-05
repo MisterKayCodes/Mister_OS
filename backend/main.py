@@ -4,8 +4,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from data import database, models
-from api.routes import notes, ai, finance, auth, leads, hunts, outreach_engine
-from dotenv import load_dotenv
+from api.routes import notes, ai, finance, auth, leads, hunts, outreach_engine, knowledge
 
 # Load environment variables from .env
 load_dotenv()
@@ -31,6 +30,7 @@ app.include_router(auth.router)
 app.include_router(leads.router)
 app.include_router(hunts.router)
 app.include_router(outreach_engine.router)
+app.include_router(knowledge.router)
 
 @app.get("/")
 def health_check():

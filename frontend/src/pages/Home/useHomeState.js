@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { fetchNotesApi, createNoteApi, saveNoteApi, deleteNotesApi, getFoldersApi, createFolderApi, deleteFolderApi, moveNotesBulkApi, fetchTokenStatsApi, cacheNotes, cacheFolders, getCachedNotes, getCachedFolders } from '../../utils/api';
+import { fetchNotesApi, createNoteApi, saveNoteApi, deleteNotesApi, getFoldersApi, createFolderApi, deleteFolderApi, moveNotesBulkApi, fetchTokenStatsApi, cacheNotes, cacheFolders, getCachedNotes, getCachedFolders, checkConnectivity } from '../../utils/api';
 import { flush, getPendingCount } from '../../utils/offlineQueue';
 import { useToast } from '../../context/ToastContext';
 
@@ -13,32 +13,43 @@ export default function useHomeState() {
   const [content, setContent] = useState("");
   const [title, setTitle] = useState("");
   const [showSecurity, setShowSecurity] = useState(false);
-  const [isOffline, setIsOffline] = useState(!navigator.onLine);
+  const [isOffline, setIsOffline] = useState(false);
   const [tokenStats, setTokenStats] = useState(null);
   const { showToast } = useToast();
 
   // --- Online/Offline Detection ---
   useEffect(() => {
-    const goOnline = async () => {
-      setIsOffline(false);
-      showToast("Back online! Syncing...", "success");
-      const synced = await flush(token);
-      if (synced > 0) {
-        showToast(`Synced ${synced} offline change(s)`, "success");
-        fetchNotes();
+    const performConnectivityCheck = async () => {
+      const isOnline = await checkConnectivity();
+      if (isOnline) {
+        if (isOffline) {
+          setIsOffline(false);
+          showToast("Back online! Syncing...", "success");
+          const synced = await flush(token);
+          if (synced > 0) {
+            showToast(`Synced ${synced} offline change(s)`, "success");
+            fetchNotes();
+          }
+        }
+      } else {
+        if (!isOffline) {
+          setIsOffline(true);
+          showToast("You're offline — viewing cached data", "info");
+        }
       }
     };
-    const goOffline = () => {
-      setIsOffline(true);
-      showToast("You're offline — viewing cached data", "info");
-    };
-    window.addEventListener('online', goOnline);
-    window.addEventListener('offline', goOffline);
+
+    // Run on mount
+    performConnectivityCheck();
+
+    // Trigger check on navigator events, instead of blinding trusting them
+    window.addEventListener('online', performConnectivityCheck);
+    window.addEventListener('offline', performConnectivityCheck);
     return () => {
-      window.removeEventListener('online', goOnline);
-      window.removeEventListener('offline', goOffline);
+      window.removeEventListener('online', performConnectivityCheck);
+      window.removeEventListener('offline', performConnectivityCheck);
     };
-  }, [token]);
+  }, [token, isOffline]);
 
   useEffect(() => { 
     if (isAuthenticated) {
@@ -77,13 +88,18 @@ export default function useHomeState() {
         return;
       }
       // Network error — fall back to cache
-      const cachedNotesData = getCachedNotes();
-      const cachedFoldersData = getCachedFolders();
-      if (cachedNotesData) {
-        setNotes(cachedNotesData);
-        setFolders(cachedFoldersData || []);
-        if (cachedNotesData.length > 0 && !activeNote) selectNote(cachedNotesData[0]);
-        setIsOffline(true);
+      const isOnline = await checkConnectivity();
+      if (!isOnline) {
+        const cachedNotesData = getCachedNotes();
+        const cachedFoldersData = getCachedFolders();
+        if (cachedNotesData) {
+          setNotes(cachedNotesData);
+          setFolders(cachedFoldersData || []);
+          if (cachedNotesData.length > 0 && !activeNote) selectNote(cachedNotesData[0]);
+          setIsOffline(true);
+        } else {
+          showToast(err.message, "error");
+        }
       } else {
         showToast(err.message, "error");
       }
@@ -164,6 +180,11 @@ export default function useHomeState() {
     setActiveNote(null);
   };
 
+  const viewKnowledge = () => {
+    setViewMode('knowledge');
+    setActiveNote(null);
+  };
+
   const handleDeleteNotes = async (ids) => {
     try {
       await deleteNotesApi(ids, token);
@@ -185,6 +206,6 @@ export default function useHomeState() {
     token, isAuthenticated, notes, folders, activeNote, setActiveNote, viewMode, setViewMode,
     content, setContent, title, setTitle, showSecurity, setShowSecurity, isOffline, tokenStats,
     handleLogin, createNote, handleCreateFolder, handleDeleteFolder, handleMoveNotes,
-    selectNote, viewFinance, viewWarRoom, handleDeleteNotes, goBack
+    selectNote, viewFinance, viewWarRoom, viewKnowledge, handleDeleteNotes, goBack
   };
 }

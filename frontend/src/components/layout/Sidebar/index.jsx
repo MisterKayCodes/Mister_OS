@@ -18,6 +18,7 @@ export default function Sidebar({
   onViewExpenses, 
   onOpenOmniBrain, 
   onOpenWarRoom, 
+  onOpenKnowledge,
   onOpenSecurity, 
   onDeleteNotes, 
   onBack, 
@@ -62,6 +63,7 @@ export default function Sidebar({
         onOpenOmniBrain={onOpenOmniBrain}
         onViewExpenses={onViewExpenses}
         onOpenWarRoom={onOpenWarRoom}
+        onOpenKnowledge={onOpenKnowledge}
         setShowFolderModal={setShowFolderModal}
         onCreateNote={onCreateNote}
         selectMode={selectMode}
