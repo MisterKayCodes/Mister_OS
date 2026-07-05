@@ -27,6 +27,30 @@ class FinanceParser:
             return now
 
     @staticmethod
+    def resolve_date_tags_to_absolute(content: str) -> str:
+        """
+        Replaces any relative date tags (like @today, @yesterday) at the end of lines
+        with absolute date tags (like @2026-07-05).
+        """
+        lines = content.split('\n')
+        resolved_lines = []
+        for line in lines:
+            # We only resolve tags if the line looks like a command
+            if re.match(r"^\s*/(spend|income|save|owe|paid-back)", line, re.IGNORECASE):
+                # Search for @tag at the very end
+                end_match = re.search(r"@([\w-]+)\s*$", line)
+                if end_match:
+                    date_tag = end_match.group(1).lower()
+                    # Only resolve if it's a relative tag, not already absolute YYYY-MM-DD
+                    if not re.match(r"^\d{4}-\d{2}-\d{2}$", date_tag):
+                        dt = FinanceParser.parse_date_tag(date_tag)
+                        abs_date = dt.strftime("%Y-%m-%d")
+                        # Replace the exact match
+                        line = line[:end_match.start()] + f"@{abs_date}"
+            resolved_lines.append(line)
+        return "\n".join(resolved_lines)
+
+    @staticmethod
     def parse_note_content(content: str, current_usd_rate: float = 1500.0) -> List[Dict[str, Any]]:
         """
         Takes raw string content and returns a list of dictionaries representing the parsed transactions.

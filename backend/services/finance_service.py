@@ -156,7 +156,11 @@ class FinanceService:
                 if not note:
                     note = NoteRepository.create(db, "Finance Ledger", "")
                 
-                new_content = note.content + f"\n{cmd_clean}"
+                # IMPORTANT FIX: Resolve @today or @yesterday to an absolute date string 
+                # so it doesn't get re-evaluated and shifted forward when the note is edited later.
+                cmd_absolute = FinanceParser.resolve_date_tags_to_absolute(cmd_clean)
+                
+                new_content = note.content + f"\n{cmd_absolute}"
                 
                 # Route through NoteService to keep vector store in sync
                 NoteService.update_note(db, note.id, content=new_content)
