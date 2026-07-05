@@ -4,6 +4,7 @@ from data import vector, models
 from providers.llm_provider import LLMProvider
 from core.prompts import Prompts
 from services.finance_service import FinanceService
+import re
 
 class AIService:
     @staticmethod
@@ -110,6 +111,32 @@ class AIService:
 
         # 9. Intercept Autonomous Commands (Nervous System orchestrates)
         final_reply, results = FinanceService.execute_autonomous_commands(db, ai_reply)
+        
+        # Intercept autonomous TASK commands
+        task_matches = re.findall(r"\[?CREATE_TASK:\s*([^\]\n]+)\]?", final_reply)
+        for task_title in task_matches:
+            task_title_clean = task_title.strip()
+            try:
+                db_task = models.Task(
+                    title=task_title_clean,
+                    description="Created autonomously by OmniBrain",
+                    status="pending"
+                )
+                db.add(db_task)
+                db.commit()
+                results.append({
+                    "action": "task",
+                    "success": True,
+                    "detail": f"Created task: '{task_title_clean}' in Task Center."
+                })
+            except Exception as e:
+                results.append({
+                    "action": "task",
+                    "success": False,
+                    "detail": f"Attempted to create task: '{task_title_clean}'",
+                    "error": str(e)
+                })
+        final_reply = re.sub(r"\[?CREATE_TASK:.*?\]?(?:\n|$)", "", final_reply).strip()
         
         if results:
             status_lines = ["", "─────────────────────────"]

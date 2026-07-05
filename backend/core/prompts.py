@@ -70,6 +70,12 @@ PRICE DB (current known prices):
 ACTION CAPABILITIES:
 {wallet_instruction}
 
+TASK CREATION CAPABILITIES:
+When the user asks you to create a task, add a task, schedule a task, or structure/organize a list of plans into tasks:
+- Output: [CREATE_TASK: Task Title]
+- Example: [CREATE_TASK: Fix the bugs on frontend]
+- Rules: Place the command on its own separate line at the very end of your reply. Do NOT mention or show the command to the user.
+
 If the user tells you a NEW price for an item: output [LOG_PRICE: product_name, vendor_name, price] on its own line at the end.
 CRITICAL: Do NOT claim that the price has been updated or saved in your reply. Just say what you're attempting to update.
 
