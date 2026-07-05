@@ -1,14 +1,50 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { BookOpen, DollarSign, Target, Sparkles, CheckSquare, Settings, LogOut, Clock, ArrowRight, Sun, Moon } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
+import { getTasksApi, fetchNotesApi } from '../../utils/api';
+import { getTransactions } from '../../utils/financeApi';
 
 export default function Dashboard({ onNavigate, onLogout, token }) {
   const { isDarkMode, toggleTheme } = useTheme();
 
-  // Placeholder metrics
-  const pendingTasks = 3;
-  const todayTxs = 5;
-  const recentNotes = 12;
+  // Dynamic metrics fetched from APIs
+  const [pendingTasksCount, setPendingTasksCount] = useState(0);
+  const [todayTxsCount, setTodayTxsCount] = useState(0);
+  const [totalNotesCount, setTotalNotesCount] = useState(0);
+
+  useEffect(() => {
+    if (!token) return;
+
+    // Fetch pending tasks
+    getTasksApi(token)
+      .then(tasks => {
+        if (Array.isArray(tasks)) {
+          const pending = tasks.filter(t => t.status !== 'done').length;
+          setPendingTasksCount(pending);
+        }
+      })
+      .catch(err => console.error("Error fetching tasks for dashboard:", err));
+
+    // Fetch total notes
+    fetchNotesApi(token)
+      .then(notes => {
+        if (Array.isArray(notes)) {
+          setTotalNotesCount(notes.length);
+        }
+      })
+      .catch(err => console.error("Error fetching notes for dashboard:", err));
+
+    // Fetch today's transactions
+    getTransactions(token)
+      .then(txs => {
+        if (Array.isArray(txs)) {
+          const todayStr = new Date().toDateString();
+          const todayCount = txs.filter(t => new Date(t.date).toDateString() === todayStr).length;
+          setTodayTxsCount(todayCount);
+        }
+      })
+      .catch(err => console.error("Error fetching transactions for dashboard:", err));
+  }, [token]);
 
   const quickLinks = [
     { name: "Notes & Editor", icon: BookOpen, color: "from-blue-500 to-cyan-400", bgLight: "bg-blue-50", textLight: "text-blue-600", onClick: () => onNavigate('notes') },
@@ -52,7 +88,7 @@ export default function Dashboard({ onNavigate, onLogout, token }) {
             </div>
             <div>
               <p className="text-sm text-gray-400 font-bold uppercase tracking-wider">Pending Tasks</p>
-              <h3 className="text-3xl font-black mt-1 text-gray-800 dark:text-white">{pendingTasks}</h3>
+              <h3 className="text-3xl font-black mt-1 text-gray-800 dark:text-white">{pendingTasksCount}</h3>
             </div>
           </div>
           
@@ -62,7 +98,7 @@ export default function Dashboard({ onNavigate, onLogout, token }) {
             </div>
             <div>
               <p className="text-sm text-gray-400 font-bold uppercase tracking-wider">Today's Transactions</p>
-              <h3 className="text-3xl font-black mt-1 text-gray-800 dark:text-white">{todayTxs}</h3>
+              <h3 className="text-3xl font-black mt-1 text-gray-800 dark:text-white">{todayTxsCount}</h3>
             </div>
           </div>
 
@@ -72,7 +108,7 @@ export default function Dashboard({ onNavigate, onLogout, token }) {
             </div>
             <div>
               <p className="text-sm text-gray-400 font-bold uppercase tracking-wider">Total Notes</p>
-              <h3 className="text-3xl font-black mt-1 text-gray-800 dark:text-white">{recentNotes}</h3>
+              <h3 className="text-3xl font-black mt-1 text-gray-800 dark:text-white">{totalNotesCount}</h3>
             </div>
           </div>
         </div>
