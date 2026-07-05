@@ -6,6 +6,7 @@ export * from './auth';
 export * from './chat';
 export * from './finance';
 export * from './token';
+export * from './tasks';
 export * from './leads';
 export * from './drafts';
 export * from './analysis';

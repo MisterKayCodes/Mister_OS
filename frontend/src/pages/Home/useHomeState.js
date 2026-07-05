@@ -9,7 +9,7 @@ export default function useHomeState() {
   const [notes, setNotes] = useState([]);
   const [folders, setFolders] = useState([]);
   const [activeNote, setActiveNote] = useState(null);
-  const [viewMode, setViewMode] = useState('editor');
+  const [viewMode, setViewMode] = useState(() => sessionStorage.getItem('mister_viewMode') || 'home');
   const [content, setContent] = useState("");
   const [title, setTitle] = useState("");
   const [showSecurity, setShowSecurity] = useState(false);
@@ -159,6 +159,10 @@ export default function useHomeState() {
     setTitle(note.title || "");
     setViewMode('editor');
   };
+
+  useEffect(() => {
+    sessionStorage.setItem('mister_viewMode', viewMode);
+  }, [viewMode]);
 
   useEffect(() => {
     if (!activeNote) return;

@@ -13,7 +13,8 @@ import { useToast } from '../../context/ToastContext';
 const TABS = ['overview', 'transactions', 'wallets', 'goals', 'subscriptions', 'price-db', 'insights'];
 
 export default function FinanceApp({ token, onBack }) {
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState(() => sessionStorage.getItem('finance_activeTab') || 'overview');
+  useEffect(() => { sessionStorage.setItem('finance_activeTab', activeTab); }, [activeTab]);
   const [overview, setOverview] = useState(null);
   const [transactions, setTransactions] = useState([]);
   const [wallets, setWallets] = useState([]);

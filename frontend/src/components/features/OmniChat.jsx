@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Bot, Send, User, ChevronLeft, MessageSquare, Plus, Loader } from 'lucide-react';
+import { Bot, Send, User, ChevronLeft, MessageSquare, Plus, Loader, Copy } from 'lucide-react';
 import { sendOmniChatApi, getChatSessionsApi, getChatMessagesApi } from '../../utils/api';
 import { useToast } from '../../context/ToastContext';
 
@@ -14,6 +14,72 @@ export default function OmniChat({ token, onBack }) {
   const { showToast } = useToast();
   const bottomRef = useRef(null);
   const isInitialMount = useRef(true);
+
+  const renderMessageContent = (content) => {
+    // Basic parser for confirmation blocks
+    const confirmRegex = /\[CONFIRM_TASK_ACTION:\s*(.*?)\s*\]/g;
+    const parts = [];
+    let lastIndex = 0;
+    let match;
+
+    while ((match = confirmRegex.exec(content)) !== null) {
+      if (match.index > lastIndex) {
+        parts.push(<span key={lastIndex}>{content.substring(lastIndex, match.index)}</span>);
+      }
+      try {
+        const actionData = JSON.parse(match[1]);
+        parts.push(
+          <div key={match.index} className="my-3 p-4 bg-indigo-50 border border-indigo-200 rounded-xl flex flex-col gap-2 shadow-sm">
+            <h4 className="font-semibold text-indigo-800">Confirm Action</h4>
+            <p className="text-sm text-indigo-700">The AI wants to: <strong>{actionData.action_name}</strong></p>
+            {actionData.details && <p className="text-xs text-indigo-600 font-mono bg-white p-2 rounded">{actionData.details}</p>}
+            <div className="flex gap-2 mt-2">
+              <button 
+                onClick={() => handleSendDummy(`[User Confirmed Action: ${actionData.action_name}]`)}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition"
+              >
+                Approve & Execute
+              </button>
+              <button 
+                onClick={() => handleSendDummy(`[User Rejected Action]`)}
+                className="bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition"
+              >
+                Reject
+              </button>
+            </div>
+          </div>
+        );
+      } catch (err) {
+        parts.push(<span key={match.index}>[Invalid Confirmation Block]</span>);
+      }
+      lastIndex = confirmRegex.lastIndex;
+    }
+
+    if (lastIndex < content.length) {
+      parts.push(<span key={lastIndex}>{content.substring(lastIndex)}</span>);
+    }
+
+    return parts;
+  };
+
+  const handleSendDummy = async (text) => {
+    // Send a message without using the input box
+    if (isBotThinking) return;
+    setMessages(prev => [...prev, { role: "user", content: text }]);
+    setIsBotThinking(true);
+    try {
+      const response = await sendOmniChatApi(text, sessionId, token);
+      setMessages(prev => [...prev, { role: "assistant", content: response.content }]);
+      if (!sessionId && response.session_id) {
+        setSessionId(response.session_id);
+        fetchSessions();
+      }
+    } catch (err) {
+      showToast(err.message, "error");
+    } finally {
+      setIsBotThinking(false);
+    }
+  };
 
   useEffect(() => {
     fetchSessions();
@@ -99,6 +165,11 @@ export default function OmniChat({ token, onBack }) {
     }
   };
 
+  const handleCopy = (text) => {
+    navigator.clipboard.writeText(text);
+    showToast("Copied to clipboard", "success");
+  };
+
   return (
     <div className="flex-1 flex h-full bg-white relative overflow-hidden">
       {/* History Sidebar */}
@@ -150,10 +221,19 @@ export default function OmniChat({ token, onBack }) {
                   }`}>
                     {msg.role === 'user' ? <User size={16} /> : <Bot size={16} />}
                   </div>
-                  <div className={`max-w-[80%] rounded-2xl px-5 py-3 ${
+                  <div className={`max-w-[80%] rounded-2xl px-5 py-3 relative group ${
                     msg.role === 'user' ? 'bg-gray-800 text-white rounded-tr-none' : 'bg-white shadow-sm border border-gray-200 text-gray-800 rounded-tl-none'
                   }`}>
-                    <p className="whitespace-pre-wrap text-sm leading-relaxed">{msg.content}</p>
+                    <button 
+                      onClick={() => handleCopy(msg.content)}
+                      className={`absolute top-2 ${msg.role === 'user' ? 'left-2 text-gray-300 hover:text-white' : 'right-2 text-gray-400 hover:text-purple-600'} opacity-0 group-hover:opacity-100 transition-opacity p-1`}
+                      title="Copy message"
+                    >
+                      <Copy size={14} />
+                    </button>
+                    <p className={`whitespace-pre-wrap text-sm leading-relaxed ${msg.role === 'user' ? 'pl-6' : 'pr-6'}`}>
+                      {msg.role === 'assistant' ? renderMessageContent(msg.content) : msg.content}
+                    </p>
                   </div>
                 </div>
               ))}

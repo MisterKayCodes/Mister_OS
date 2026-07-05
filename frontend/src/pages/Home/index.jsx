@@ -3,10 +3,12 @@ import { Edit2 } from 'lucide-react';
 import Sidebar from '../../components/layout/Sidebar';
 import AuthScreen from '../../components/layout/AuthScreen';
 import Editor from '../../components/features/Editor';
+import Dashboard from './Dashboard';
 
 import FinanceApp from '../../pages/Finance';
 import LeadsApp from '../../pages/Leads';
 import KnowledgeApp from '../../pages/Knowledge';
+import TasksApp from '../../pages/Tasks';
 import OmniChat from '../../components/features/OmniChat';
 import SecurityModal from '../../components/features/SecurityModal';
 import useHomeState from './useHomeState';
@@ -50,7 +52,18 @@ export default function Home() {
         </div>
 
         <div className={`flex-1 flex bg-white relative overflow-hidden ${showSidebar ? 'hidden md:flex' : 'flex'}`}>
-          {state.viewMode === 'omnichat' ? (
+          {state.viewMode === 'home' ? (
+            <Dashboard 
+              onOpenMenu={() => { state.setViewMode('editor'); state.setActiveNote(null); }}
+              onOpenFinance={state.viewFinance}
+              onOpenWarRoom={state.viewWarRoom}
+              onOpenKnowledge={state.viewKnowledge}
+              onOpenTasks={() => { state.setViewMode('tasks'); state.setActiveNote(null); }}
+              onOpenOmniBrain={() => { state.setViewMode('omnichat'); state.setActiveNote(null); }}
+              tokenStats={state.tokenStats}
+              onLogout={() => { localStorage.removeItem("master_token"); state.handleLogin(""); window.location.reload(); }}
+            />
+          ) : state.viewMode === 'omnichat' ? (
             <OmniChat token={state.token} onBack={state.goBack} />
           ) : state.viewMode === 'finance' ? (
             <FinanceApp token={state.token} onBack={state.goBack} />
@@ -58,6 +71,8 @@ export default function Home() {
             <LeadsApp token={state.token} onBack={state.goBack} />
           ) : state.viewMode === 'knowledge' ? (
             <KnowledgeApp token={state.token} onBack={state.goBack} />
+          ) : state.viewMode === 'tasks' ? (
+            <TasksApp token={state.token} onBack={state.goBack} />
           ) : state.activeNote ? (
             <>
               <Editor

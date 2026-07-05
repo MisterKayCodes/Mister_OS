@@ -8,3 +8,4 @@ from .hunt import HuntedChannel, ScrapedChannel, AdminLead
 from .outreach import OutreachLog, OutreachTemplate, CrmSettings, OutreachBrain, OutreachQueue
 from .analysis import AnalysisReport
 from .token import TokenUsageLog
+from .task import Task
