@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from data import database, models
 from api.routes import notes, ai, finance, auth, leads, hunts, outreach_engine, knowledge
+from dotenv import load_dotenv
 
 # Load environment variables from .env
 load_dotenv()
