@@ -1,6 +1,6 @@
 from .base import Base
 from .note import SearchLog, Folder, Note, ChatSession, ChatMessage
-from .finance import Wallet, Transaction, Goal, Debt, BudgetCap, FinanceSettings
+from .finance import Wallet, Transaction, Goal, Debt, BudgetCap, FinanceSettings, Subscription
 from .auth import AuthSession
 from .pricedb import Vendor, Product, PriceLog
 from .lead import Lead, LeadSummary, LeadInteraction, ChatTranscript
