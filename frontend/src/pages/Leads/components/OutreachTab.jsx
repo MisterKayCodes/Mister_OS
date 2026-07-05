@@ -26,8 +26,9 @@ export default function OutreachTab({ token }) {
   
   // Local state for editing messages in queue
   const [editedMessages, setEditedMessages] = useState({});
-  // Local state for editing the advice text
+  // Local state for editing brain fields
   const [adviceText, setAdviceText] = useState('');
+  const [systemPromptText, setSystemPromptText] = useState('');
 
   const loadData = useCallback(async () => {
     try {
@@ -35,13 +36,14 @@ export default function OutreachTab({ token }) {
         fetchOutreachStatsApi(token),
         fetchCrmSettingsApi(token),
         fetchBrainApi(token),
-        fetchQueueApi('pending', token),
+        fetchQueueApi('pending,approved', token),
         fetchSentHistoryApi(token)
       ]);
       setStats(s);
       setSettings(cfg);
       setBrain(brn);
       setAdviceText(brn.advice_text || '');
+      setSystemPromptText(brn.system_prompt || '');
       setQueue(q);
       setSentHistory(hist);
       setBossUsername(cfg.boss_alert_username || '');
@@ -61,7 +63,7 @@ export default function OutreachTab({ token }) {
     if (stats?.outreach_active) {
       const interval = setInterval(() => {
         fetchOutreachStatsApi(token).then(setStats).catch(() => {});
-        fetchQueueApi('pending', token).then(setQueue).catch(() => {});
+        fetchQueueApi('pending,approved', token).then(setQueue).catch(() => {});
         fetchSentHistoryApi(token).then(setSentHistory).catch(() => {});
       }, 5000);
       return () => clearInterval(interval);
@@ -112,7 +114,7 @@ export default function OutreachTab({ token }) {
       if (res.generated === 0) {
         alert("No fresh admins available to fill the queue. Scan some channels first!");
       } else {
-        const q = await fetchQueueApi('pending', token);
+        const q = await fetchQueueApi('pending,approved', token);
         setQueue(q);
       }
     } catch (e) {
@@ -133,8 +135,8 @@ export default function OutreachTab({ token }) {
         edited_message: finalMsg,
         status: 'approved'
       }, token);
-      // Remove from pending UI list
-      setQueue(prev => prev.filter(i => i.id !== item.id));
+      // Update locally to approved so it stays in UI
+      setQueue(prev => prev.map(i => i.id === item.id ? { ...i, edited_message: finalMsg, status: 'approved' } : i));
       // Refresh stats
       const s = await fetchOutreachStatsApi(token);
       setStats(s);
@@ -167,9 +169,9 @@ export default function OutreachTab({ token }) {
   const handleSaveBrain = async () => {
     setSavingBrain(true);
     try {
-      const updated = await updateBrainApi({ advice_text: adviceText }, token);
+      const updated = await updateBrainApi({ system_prompt: systemPromptText, advice_text: adviceText }, token);
       setBrain(updated);
-      alert("AI Outreach Advice updated successfully!");
+      alert("AI Outreach Brain updated successfully!");
     } catch (e) {
       alert(e.message);
     } finally {
@@ -315,7 +317,14 @@ export default function OutreachTab({ token }) {
                   <div key={item.id} className="border border-gray-200 rounded-xl p-4 bg-white hover:shadow-sm transition-all flex flex-col gap-3">
                     <div className="flex justify-between items-start">
                       <div>
-                        <span className="text-sm font-extrabold text-gray-900">@{item.admin_username}</span>
+                        <span className="text-sm font-extrabold text-gray-900">
+                          @{item.admin_username}
+                          {item.status === 'approved' && (
+                            <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-800">
+                              APPROVED
+                            </span>
+                          )}
+                        </span>
                         {item.channel_name && (
                           <span className="text-xs text-blue-600 font-medium ml-2">from {item.channel_name}</span>
                         )}
@@ -355,26 +364,46 @@ export default function OutreachTab({ token }) {
         </div>
       </div>
 
-      {/* ─── OUTREACH BRAIN: AI ADVICE TEXT ─── */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-        <h3 className="text-sm font-bold text-gray-800 mb-2 flex items-center gap-2">
-          <Brain size={16} className="text-purple-500 animate-pulse" /> The Outreach Brain
-        </h3>
-        <p className="text-xs text-gray-500 mb-4">Edit the instructions the AI follows when generating opener drafts. Change angles, update guidelines, or refine pitches.</p>
-        
-        <textarea
-          value={adviceText}
-          onChange={e => setAdviceText(e.target.value)}
-          className="w-full border border-gray-200 rounded-lg p-4 text-xs font-mono text-gray-800 bg-gray-50/50 focus:outline-none focus:border-purple-400 min-h-[180px]"
-        />
+      {/* ─── OUTREACH BRAIN ─── */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 flex flex-col gap-5">
+        <div>
+          <h3 className="text-sm font-bold text-gray-800 mb-1 flex items-center gap-2">
+            <Brain size={16} className="text-purple-500 animate-pulse" /> The Outreach Brain
+          </h3>
+          <p className="text-xs text-gray-400">Two editable layers that control what the AI generates. Save both together.</p>
+        </div>
 
-        <div className="flex justify-end mt-3">
+        {/* System Prompt */}
+        <div>
+          <label className="text-xs font-bold text-gray-700 block mb-1">🤖 System Prompt <span className="font-normal text-gray-400">(Core AI persona &amp; rules)</span></label>
+          <p className="text-xs text-gray-400 mb-2">This defines who the AI is and the hard rules it must follow every time. Edit this to change the pitch angle, tone, or core strategy.</p>
+          <textarea
+            value={systemPromptText}
+            onChange={e => setSystemPromptText(e.target.value)}
+            className="w-full border border-purple-200 rounded-lg p-4 text-xs font-mono text-gray-800 bg-purple-50/30 focus:outline-none focus:border-purple-500 min-h-[160px]"
+            placeholder="Describe the AI's role and hard rules here..."
+          />
+        </div>
+
+        {/* Sales Advice */}
+        <div>
+          <label className="text-xs font-bold text-gray-700 block mb-1">📊 Sales Intelligence <span className="font-normal text-gray-400">(Conversion data &amp; patterns)</span></label>
+          <p className="text-xs text-gray-400 mb-2">What's working, what's killing conversions, and the best opener patterns. The AI reads this before every message it writes.</p>
+          <textarea
+            value={adviceText}
+            onChange={e => setAdviceText(e.target.value)}
+            className="w-full border border-gray-200 rounded-lg p-4 text-xs font-mono text-gray-800 bg-gray-50/50 focus:outline-none focus:border-purple-400 min-h-[160px]"
+            placeholder="Paste your green/red/pain point analysis here..."
+          />
+        </div>
+
+        <div className="flex justify-end">
           <button 
             onClick={handleSaveBrain}
             disabled={savingBrain}
             className="bg-purple-600 text-white hover:bg-purple-700 transition px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm disabled:opacity-50"
           >
-            <Save size={14} /> {savingBrain ? 'Saving...' : 'Save AI Strategy'}
+            <Save size={14} /> {savingBrain ? 'Saving...' : 'Save AI Brain'}
           </button>
         </div>
       </div>

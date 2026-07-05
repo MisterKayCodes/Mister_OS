@@ -90,8 +90,42 @@ export default function HuntsTab({ token }) {
                     {freshAdmins.map(admin => (
                       <tr key={admin.id} className="border-t border-gray-100 hover:bg-gray-50">
                         <td className="p-3 font-bold text-gray-900">
-                          {admin.username.startsWith('MANUAL:') ? admin.username : `@${admin.username}`}
-                          {admin.channel_id && <div className="text-xs text-blue-500 font-normal">from {getChannelName(admin.channel_id)}</div>}
+                          {editUsernames[`edit_${admin.id}`] !== undefined ? (
+                            <div className="flex items-center gap-2">
+                              <input 
+                                type="text"
+                                className="border border-gray-200 rounded px-2 py-1 text-xs w-32 font-normal focus:outline-none focus:border-blue-500"
+                                value={editUsernames[`edit_${admin.id}`]}
+                                onChange={e => setEditUsernames({...editUsernames, [`edit_${admin.id}`]: e.target.value})}
+                                placeholder="Username"
+                              />
+                              <button onClick={async () => {
+                                try {
+                                  const newVal = editUsernames[`edit_${admin.id}`].replace('@', '').trim();
+                                  if (newVal) {
+                                    const updated = await updateAdminLeadApi(admin.id, { username: newVal }, token);
+                                    setAdmins(admins.map(a => a.id === admin.id ? updated : a));
+                                  }
+                                  const newObj = {...editUsernames};
+                                  delete newObj[`edit_${admin.id}`];
+                                  setEditUsernames(newObj);
+                                } catch (e) { alert(e.message); }
+                              }} className="text-xs bg-blue-500 text-white px-2 py-1 rounded">Save</button>
+                              <button onClick={() => {
+                                const newObj = {...editUsernames};
+                                delete newObj[`edit_${admin.id}`];
+                                setEditUsernames(newObj);
+                              }} className="text-xs text-gray-400 hover:text-gray-600">Cancel</button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <span>{admin.username.startsWith('MANUAL:') ? admin.username : `@${admin.username}`}</span>
+                              <button onClick={() => setEditUsernames({...editUsernames, [`edit_${admin.id}`]: admin.username})} className="text-gray-300 hover:text-blue-500 transition text-xs">
+                                ✎
+                              </button>
+                            </div>
+                          )}
+                          {admin.channel_id && <div className="text-xs text-blue-500 font-normal mt-0.5">from {getChannelName(admin.channel_id)}</div>}
                         </td>
                         <td className="p-3 text-gray-500 text-xs capitalize">{admin.source}</td>
                         <td className="p-3 flex items-center gap-2">

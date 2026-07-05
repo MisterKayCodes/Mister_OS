@@ -19,6 +19,20 @@ DELAY_MODES = {
     "aggressive": (10, 45),
 }
 
+DEFAULT_SYSTEM_PROMPT = """You are an expert Telegram outreach specialist for a service that helps Telegram channel admins protect and grow their audience by creating backup channels.
+
+Your job is to write a personalized first-contact DM to a channel admin.
+
+Rules:
+- Address them as "Boss" — NEVER use their channel name or admin username as a greeting
+- Keep it SHORT (2-4 lines max, no walls of text)
+- Casual tone, use 1-2 emojis naturally
+- Open with a warm greeting + a question about their channel backup/security
+- Subtly highlight the risk of losing their audience
+- Do NOT mention any price, service name, or hard CTA in the first message
+- End with a curiosity hook that makes them want to reply
+- NEVER confuse the admin username with the channel name. The admin IS the person you're messaging. The channel is what they own."""
+
 SALES_ADVICE = """
 🟢 What's Working:
 • Starting with a personal greeting and a question about their channel backup
@@ -50,8 +64,13 @@ SALES_ADVICE = """
 def get_brain(db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
     brain = db.query(models.OutreachBrain).first()
     if not brain:
-        brain = models.OutreachBrain(advice_text=SALES_ADVICE, correction_log=[])
+        brain = models.OutreachBrain(system_prompt=DEFAULT_SYSTEM_PROMPT, advice_text=SALES_ADVICE, correction_log=[])
         db.add(brain)
+        db.commit()
+        db.refresh(brain)
+    # Seed system_prompt if it's missing (existing row)
+    if not brain.system_prompt:
+        brain.system_prompt = DEFAULT_SYSTEM_PROMPT
         db.commit()
         db.refresh(brain)
     return brain
@@ -60,9 +79,11 @@ def get_brain(db: Session = Depends(database.get_db), token: str = Depends(get_m
 def update_brain(req: schemas.OutreachBrainUpdate, db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
     brain = db.query(models.OutreachBrain).first()
     if not brain:
-        brain = models.OutreachBrain(advice_text=req.advice_text, correction_log=[])
+        brain = models.OutreachBrain(system_prompt=req.system_prompt or DEFAULT_SYSTEM_PROMPT, advice_text=req.advice_text, correction_log=[])
         db.add(brain)
     else:
+        if req.system_prompt is not None:
+            brain.system_prompt = req.system_prompt
         if req.advice_text is not None:
             brain.advice_text = req.advice_text
     db.commit()
@@ -83,38 +104,36 @@ def log_correction(req: schemas.CorrectionLogEntry, db: Session = Depends(databa
 
 # ─── AI Generation ───────────────────────────────────────────────────────────
 
-def _build_prompt(brain: models.OutreachBrain, channel_name: str, member_count) -> str:
+def _build_prompt(brain: models.OutreachBrain, admin_username: str, channel_name: str, member_count) -> str:
+    system_prompt = brain.system_prompt or DEFAULT_SYSTEM_PROMPT
     advice = brain.advice_text or SALES_ADVICE
     corrections_section = ""
     if brain.correction_log:
-        corrections_section = "\n\nHere are examples where previous messages were corrected by the user. Learn from these:\n"
-        for c in brain.correction_log[-10:]:  # Last 10 corrections
-            corrections_section += f"\n❌ Original: {c['original']}\n✅ Corrected: {c['corrected']}\n"
+        corrections_section = "\n\nLEARNING FROM PAST CORRECTIONS (apply these lessons):\n"
+        for c in brain.correction_log[-10:]:
+            corrections_section += f"\n❌ Bad: {c['original']}\n✅ Better: {c['corrected']}\n"
             if c.get("reason"):
-                corrections_section += f"   Reason: {c['reason']}\n"
+                corrections_section += f"   Why: {c['reason']}\n"
 
     member_text = f"{member_count:,}" if member_count else "unknown"
 
-    return f"""You are an expert Telegram outreach specialist for a service that helps channel admins protect and grow their audience by creating backup channels.
+    return f"""{system_prompt}
 
-Here is your strategic knowledge base from real conversion data:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PROSPECT CONTEXT (use this EXACTLY, do not swap or hallucinate these details):
+- Prospect Username (who you are DMing): @{admin_username}
+- Channel They Own (their Telegram channel): {channel_name}
+- Channel Size: {member_text} members
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+STRATEGIC KNOWLEDGE BASE:
 {advice}
 {corrections_section}
 
-Now write a personalized first-contact DM for this lead:
-- Their channel: {channel_name} ({member_text} members)
-- Address them as "Boss" — NEVER use their channel name as a greeting
-- Keep it SHORT (2-4 lines max, no paragraphs)
-- Casual tone, use 1-2 emojis naturally
-- Open with a warm greeting + a question about their channel backup/security
-- Subtly highlight the risk of losing their audience
-- Do NOT mention any price, service name, or hard CTA
-- End with a curiosity hook that makes them want to reply
+Now write the DM. Return ONLY the message text. No quotes, no labels, no explanation."""
 
-Return ONLY the message text. No quotes, no labels, no explanation."""
-
-async def _generate_message(brain, channel_name: str, member_count) -> str:
-    prompt = _build_prompt(brain, channel_name, member_count)
+async def _generate_message(brain, admin_username: str, channel_name: str, member_count) -> str:
+    prompt = _build_prompt(brain, admin_username, channel_name, member_count)
     messages = [{"role": "user", "content": prompt}]
     text, usage = await LLMProvider.generate_completion(messages=messages, temperature=0.75)
     return text
@@ -123,7 +142,11 @@ async def _generate_message(brain, channel_name: str, member_count) -> str:
 
 @router.get("/queue", response_model=List[schemas.OutreachQueueResponse])
 def get_queue(status: str = "pending", db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
-    items = db.query(models.OutreachQueue).filter(models.OutreachQueue.status == status).order_by(models.OutreachQueue.created_at).all()
+    if "," in status:
+        statuses = status.split(",")
+        items = db.query(models.OutreachQueue).filter(models.OutreachQueue.status.in_(statuses)).order_by(models.OutreachQueue.created_at).all()
+    else:
+        items = db.query(models.OutreachQueue).filter(models.OutreachQueue.status == status).order_by(models.OutreachQueue.created_at).all()
     # Enrich with admin/channel info
     result = []
     for item in items:
@@ -167,10 +190,13 @@ async def fill_queue(req: QueueFillRequest, db: Session = Depends(database.get_d
     
     brain = db.query(models.OutreachBrain).first()
     if not brain:
-        brain = models.OutreachBrain(advice_text=SALES_ADVICE, correction_log=[])
+        brain = models.OutreachBrain(system_prompt=DEFAULT_SYSTEM_PROMPT, advice_text=SALES_ADVICE, correction_log=[])
         db.add(brain)
         db.commit()
         db.refresh(brain)
+    if not brain.system_prompt:
+        brain.system_prompt = DEFAULT_SYSTEM_PROMPT
+        db.commit()
     
     generated = 0
     for admin in fresh_admins:
@@ -179,7 +205,7 @@ async def fill_queue(req: QueueFillRequest, db: Session = Depends(database.get_d
             channel_name = ch.title or ch.username or admin.username if ch else admin.username
             member_count = ch.members_count if ch else None
             
-            message = await _generate_message(brain, channel_name, member_count)
+            message = await _generate_message(brain, admin.username, channel_name, member_count)
             
             queue_item = models.OutreachQueue(
                 admin_lead_id=admin.id,

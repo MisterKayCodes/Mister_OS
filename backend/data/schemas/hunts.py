@@ -86,6 +86,7 @@ class CrmSettingsUpdate(BaseModel):
 # --- Outreach Brain ---
 class OutreachBrainResponse(BaseModel):
     id: int
+    system_prompt: Optional[str] = None
     advice_text: Optional[str] = None
     correction_log: Optional[list] = []
     generated_count: int = 0
@@ -95,6 +96,7 @@ class OutreachBrainResponse(BaseModel):
         from_attributes = True
 
 class OutreachBrainUpdate(BaseModel):
+    system_prompt: Optional[str] = None
     advice_text: Optional[str] = None
 
 class CorrectionLogEntry(BaseModel):

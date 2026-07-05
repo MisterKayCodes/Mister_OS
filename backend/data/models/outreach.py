@@ -32,8 +32,9 @@ class OutreachBrain(Base):
     """Living AI knowledge base — stores sales advice and learns from corrections."""
     __tablename__ = "outreach_brain"
     id = Column(Integer, primary_key=True, index=True)
-    advice_text = Column(Text, nullable=True)        # The green/red/pain point analysis
-    correction_log = Column(JSON, default=list)      # [{original, corrected, reason}]
+    system_prompt = Column(Text, nullable=True)       # Core AI persona & pitch rules (editable)
+    advice_text = Column(Text, nullable=True)         # The green/red/pain point analysis
+    correction_log = Column(JSON, default=list)       # [{original, corrected, reason}]
     generated_count = Column(Integer, default=0)
     last_updated = Column(DateTime(timezone=True), onupdate=func.now(), server_default=func.now())
 
