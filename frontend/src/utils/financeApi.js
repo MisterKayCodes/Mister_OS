@@ -51,6 +51,16 @@ export const depositToWalletApi = async (walletId, amount, token) => {
   return await res.json();
 };
 
+export const transferWalletApi = async (fromWalletId, toWalletId, amount, token) => {
+  const res = await fetch(`${API_BASE}/wallets/transfer`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Master-Token": token },
+    body: JSON.stringify({ from_wallet_id: fromWalletId, to_wallet_id: toWalletId, amount })
+  });
+  if (!res.ok) throw new Error("Failed to transfer funds");
+  return await res.json();
+};
+
 export const updateWalletApi = async (walletId, data, token) => {
   const res = await fetch(`${API_BASE}/wallets/${walletId}`, {
     method: "PUT",

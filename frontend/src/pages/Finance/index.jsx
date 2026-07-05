@@ -86,20 +86,36 @@ export default function FinanceApp({ token, onBack }) {
                   <h3 className="text-4xl font-extrabold tracking-tight">{formatNGN(overview.net_worth)}</h3>
                   <p className="text-purple-300 text-xs mt-2">{wallets.length} wallet{wallets.length !== 1 ? 's' : ''} tracked</p>
                 </div>
-                {/* Income */}
-                <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center text-green-600 shrink-0"><ArrowDownRight size={22} /></div>
+                {/* Daily Income */}
+                <div className="bg-white p-4 md:p-5 rounded-2xl border border-gray-200 shadow-sm flex items-center gap-4">
+                  <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-green-50 flex items-center justify-center text-green-500 shrink-0"><ArrowDownRight size={20} /></div>
                   <div>
-                    <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">Month Income</p>
-                    <p className="text-xl font-bold text-green-600">{formatNGN(overview.month_income)}</p>
+                    <p className="text-[10px] md:text-xs text-gray-500 font-medium uppercase tracking-wider">Today's Income</p>
+                    <p className="text-lg md:text-xl font-bold text-green-600">{formatNGN(overview.today_income)}</p>
                   </div>
                 </div>
-                {/* Expenses */}
-                <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center text-red-600 shrink-0"><ArrowUpRight size={22} /></div>
+                {/* Daily Expenses */}
+                <div className="bg-white p-4 md:p-5 rounded-2xl border border-gray-200 shadow-sm flex items-center gap-4">
+                  <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-red-50 flex items-center justify-center text-red-500 shrink-0"><ArrowUpRight size={20} /></div>
                   <div>
-                    <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">Month Expenses</p>
-                    <p className="text-xl font-bold text-red-600">{formatNGN(overview.month_expenses)}</p>
+                    <p className="text-[10px] md:text-xs text-gray-500 font-medium uppercase tracking-wider">Today's Expenses</p>
+                    <p className="text-lg md:text-xl font-bold text-red-600">{formatNGN(overview.today_expenses)}</p>
+                  </div>
+                </div>
+                {/* Monthly Income */}
+                <div className="bg-white p-4 md:p-5 rounded-2xl border border-gray-200 shadow-sm flex items-center gap-4">
+                  <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-green-100 flex items-center justify-center text-green-600 shrink-0"><ArrowDownRight size={22} /></div>
+                  <div>
+                    <p className="text-[10px] md:text-xs text-gray-500 font-medium uppercase tracking-wider">Month Income</p>
+                    <p className="text-lg md:text-xl font-bold text-green-600">{formatNGN(overview.month_income)}</p>
+                  </div>
+                </div>
+                {/* Monthly Expenses */}
+                <div className="bg-white p-4 md:p-5 rounded-2xl border border-gray-200 shadow-sm flex items-center gap-4">
+                  <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-red-100 flex items-center justify-center text-red-600 shrink-0"><ArrowUpRight size={22} /></div>
+                  <div>
+                    <p className="text-[10px] md:text-xs text-gray-500 font-medium uppercase tracking-wider">Month Expenses</p>
+                    <p className="text-lg md:text-xl font-bold text-red-600">{formatNGN(overview.month_expenses)}</p>
                   </div>
                 </div>
                 {/* Savings Rate */}

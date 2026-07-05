@@ -1,7 +1,7 @@
 // Rule: Max 200 lines per file — split if exceeded
 import React, { useState, useEffect } from 'react';
-import { Wallet, Plus, Trash2, ArrowDownCircle, X, Edit2, Star } from 'lucide-react';
-import { createWalletApi, deleteWalletApi, depositToWalletApi, updateWalletApi, getFinanceSettingsApi, setDefaultWalletApi } from '../../../utils/financeApi';
+import { Wallet, Plus, Trash2, ArrowDownCircle, X, Edit2, Star, ArrowRightLeft } from 'lucide-react';
+import { createWalletApi, deleteWalletApi, depositToWalletApi, updateWalletApi, getFinanceSettingsApi, setDefaultWalletApi, transferWalletApi } from '../../../utils/financeApi';
 import { useToast } from '../../../context/ToastContext';
 
 const TYPE_STYLES = {
@@ -19,6 +19,9 @@ export default function WalletsTab({ wallets, setWallets, formatNGN, token }) {
   const [depositAmount, setDepositAmount] = useState('');
   const [form, setForm] = useState({ name: '', type: 'liquid', color: WALLET_COLORS[0], balance: '' });
   const [defaultWalletId, setDefaultWalletId] = useState(null);
+  
+  const [showTransfer, setShowTransfer] = useState(false);
+  const [transferForm, setTransferForm] = useState({ fromWalletId: '', toWalletId: '', amount: '' });
   const { showToast } = useToast();
 
   useEffect(() => {
@@ -77,6 +80,25 @@ export default function WalletsTab({ wallets, setWallets, formatNGN, token }) {
     } catch (err) { showToast(err.message, 'error'); }
   };
 
+  const handleTransfer = async (e) => {
+    e.preventDefault();
+    if (!transferForm.fromWalletId || !transferForm.toWalletId || !transferForm.amount) return;
+    try {
+      await transferWalletApi(transferForm.fromWalletId, transferForm.toWalletId, parseInt(transferForm.amount), token);
+      
+      // Update local wallet balances
+      setWallets(wallets.map(w => {
+        if (w.id == transferForm.fromWalletId) return { ...w, balance: w.balance - parseInt(transferForm.amount) };
+        if (w.id == transferForm.toWalletId) return { ...w, balance: w.balance + parseInt(transferForm.amount) };
+        return w;
+      }));
+      
+      setShowTransfer(false);
+      setTransferForm({ fromWalletId: '', toWalletId: '', amount: '' });
+      showToast('Transfer successful!', 'success');
+    } catch (err) { showToast(err.message, 'error'); }
+  };
+
   const openEdit = (w) => {
     setEditTarget(w);
     setForm({ name: w.name, type: w.type, color: w.color, balance: w.balance });
@@ -86,9 +108,14 @@ export default function WalletsTab({ wallets, setWallets, formatNGN, token }) {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="font-semibold text-gray-700">Your Wallets & Pots</h3>
-        <button onClick={() => setShowForm(s => !s)} className="flex items-center gap-1 text-sm bg-black text-white px-3 py-1.5 rounded-full hover:bg-gray-800 transition">
-          <Plus size={14} /> Add Wallet
-        </button>
+        <div className="flex gap-2">
+          <button onClick={() => setShowTransfer(true)} className="flex items-center gap-1 text-sm bg-gray-100 text-gray-800 border border-gray-200 px-3 py-1.5 rounded-full hover:bg-gray-200 transition">
+            <ArrowRightLeft size={14} /> Transfer
+          </button>
+          <button onClick={() => setShowForm(s => !s)} className="flex items-center gap-1 text-sm bg-black text-white px-3 py-1.5 rounded-full hover:bg-gray-800 transition">
+            <Plus size={14} /> Add Wallet
+          </button>
+        </div>
       </div>
 
       {showForm && (
@@ -182,6 +209,38 @@ export default function WalletsTab({ wallets, setWallets, formatNGN, token }) {
                 ))}
               </div>
               <button type="submit" className="w-full bg-black text-white py-2 rounded-lg text-sm font-medium hover:bg-gray-800 transition mt-2">Save Changes</button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showTransfer && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-semibold text-gray-800">Transfer Funds</h3>
+              <button onClick={() => { setShowTransfer(false); setTransferForm({ fromWalletId: '', toWalletId: '', amount: '' }); }}><X size={18} /></button>
+            </div>
+            <form onSubmit={handleTransfer} className="flex flex-col gap-3">
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block">From Wallet</label>
+                <select required value={transferForm.fromWalletId} onChange={e => setTransferForm({...transferForm, fromWalletId: e.target.value})} className="w-full border border-gray-200 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-black">
+                  <option value="">Select source wallet</option>
+                  {wallets.map(w => <option key={w.id} value={w.id}>{w.name} ({formatNGN(w.balance)})</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block">To Wallet</label>
+                <select required value={transferForm.toWalletId} onChange={e => setTransferForm({...transferForm, toWalletId: e.target.value})} className="w-full border border-gray-200 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-black">
+                  <option value="">Select destination wallet</option>
+                  {wallets.filter(w => w.id != transferForm.fromWalletId).map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block">Amount</label>
+                <input type="number" required min="1" value={transferForm.amount} onChange={e => setTransferForm({...transferForm, amount: e.target.value})} placeholder="Amount (₦)" className="w-full border border-gray-200 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-black" />
+              </div>
+              <button type="submit" className="w-full bg-black text-white py-2 rounded-lg text-sm font-medium hover:bg-gray-800 transition mt-2">Transfer</button>
             </form>
           </div>
         </div>

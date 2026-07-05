@@ -180,4 +180,53 @@ class FinanceService:
                 })
             
         llm_reply = re.sub(r"\[?LOG_EXPENSE:.*?\]?(?:\n|$)", "", llm_reply)
+        
+        # Process [LOG_TRANSFER: amount from_wallet to_wallet]
+        transfer_matches = re.findall(r"\[?LOG_TRANSFER:\s*(\d+(?:\.\d+)?)\s+([^\]]+?)\s+([^\]]+?)\]?(?:\n|$)", llm_reply)
+        for amount_str, from_w_name, to_w_name in transfer_matches:
+            from_name_clean = from_w_name.strip()
+            to_name_clean = to_w_name.strip()
+            amount = int(float(amount_str))
+            
+            try:
+                # Find wallets by exact or case-insensitive match
+                w_from = db.query(models.Wallet).filter(models.Wallet.name.ilike(f"%{from_name_clean}%")).first()
+                w_to = db.query(models.Wallet).filter(models.Wallet.name.ilike(f"%{to_name_clean}%")).first()
+                
+                if not w_from or not w_to:
+                    results.append({
+                        "action": "transfer",
+                        "success": False,
+                        "detail": f"Attempted to transfer ₦{amount:,} from '{from_name_clean}' to '{to_name_clean}'",
+                        "error": "One or both wallets could not be found."
+                    })
+                    continue
+                    
+                if w_from.balance < amount:
+                    results.append({
+                        "action": "transfer",
+                        "success": False,
+                        "detail": f"Attempted to transfer ₦{amount:,} from '{w_from.name}' to '{w_to.name}'",
+                        "error": "Insufficient funds in source wallet."
+                    })
+                    continue
+                    
+                w_from.balance -= amount
+                w_to.balance += amount
+                db.commit()
+                
+                results.append({
+                    "action": "transfer",
+                    "success": True,
+                    "detail": f"Transferred ₦{amount:,} from '{w_from.name}' to '{w_to.name}'."
+                })
+            except Exception as e:
+                results.append({
+                    "action": "transfer",
+                    "success": False,
+                    "detail": f"Attempted transfer of ₦{amount:,}",
+                    "error": str(e)
+                })
+                
+        llm_reply = re.sub(r"\[?LOG_TRANSFER:.*?\]?(?:\n|$)", "", llm_reply)
         return llm_reply.strip(), results

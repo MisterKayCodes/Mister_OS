@@ -25,6 +25,11 @@ class WalletUpdate(BaseModel):
 class WalletDeposit(BaseModel):
     amount: int
 
+class WalletTransfer(BaseModel):
+    from_wallet_id: int
+    to_wallet_id: int
+    amount: int
+
 class GoalCreate(BaseModel):
     name: str
     price_min: int
@@ -45,16 +50,27 @@ class DefaultWalletUpdate(BaseModel):
 def get_overview(db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
     wallets = db.query(models.Wallet).all()
     net_worth = sum(w.balance for w in wallets)
+    
     now = datetime.now()
     start_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    start_of_today = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    
     txs = db.query(models.Transaction).filter(models.Transaction.date >= start_of_month).all()
+    
     income = sum(t.amount_naira for t in txs if t.type == "income")
     expenses = sum(t.amount_naira for t in txs if t.type == "expense")
     saved = sum(t.amount_naira for t in txs if t.type == "save")
+    
+    txs_today = [t for t in txs if t.date >= start_of_today]
+    today_income = sum(t.amount_naira for t in txs_today if t.type == "income")
+    today_expenses = sum(t.amount_naira for t in txs_today if t.type == "expense")
+
     return {
         "net_worth": net_worth,
         "month_income": income,
         "month_expenses": expenses,
+        "today_income": today_income,
+        "today_expenses": today_expenses,
         "month_saved": saved,
         "savings_rate": round((saved / income * 100), 1) if income > 0 else 0
     }
@@ -147,7 +163,25 @@ def deposit_to_wallet(wallet_id: int, req: WalletDeposit, db: Session = Depends(
         raise HTTPException(status_code=404, detail="Wallet not found")
     w.balance += req.amount
     db.commit()
-    return {"message": "Balance updated", "balance": w.balance}
+    db.refresh(w)
+    return w
+
+@router.post("/wallets/transfer")
+def transfer_between_wallets(req: WalletTransfer, db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
+    w_from = db.query(models.Wallet).filter(models.Wallet.id == req.from_wallet_id).first()
+    w_to = db.query(models.Wallet).filter(models.Wallet.id == req.to_wallet_id).first()
+    
+    if not w_from or not w_to:
+        raise HTTPException(status_code=404, detail="One or both wallets not found")
+        
+    if w_from.balance < req.amount:
+        raise HTTPException(status_code=400, detail="Insufficient funds in source wallet")
+        
+    w_from.balance -= req.amount
+    w_to.balance += req.amount
+    db.commit()
+    
+    return {"message": f"Transferred {req.amount} successfully"}
 
 @router.put("/wallets/{wallet_id}")
 def update_wallet(wallet_id: int, req: WalletUpdate, db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
