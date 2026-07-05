@@ -5,6 +5,7 @@ from datetime import datetime
 from pydantic import BaseModel
 from data.database import get_db
 from data.models.task import Task
+from api.dependencies import get_master_token  # ✅ ADDED: Import authentication dependency
 
 router = APIRouter(prefix="/api/tasks", tags=["Tasks"])
 
@@ -29,10 +30,15 @@ class TaskResponse(BaseModel):
     class Config:
         from_attributes = True
 
-# Accept both with and without trailing slash
-@router.post("")
-@router.post("/")
-def create_task(task: TaskCreate, db: Session = Depends(get_db)):
+
+# ✅ CHANGED: Added response_model and authentication dependency
+@router.post("", response_model=TaskResponse)
+@router.post("/", response_model=TaskResponse)
+def create_task(
+    task: TaskCreate, 
+    db: Session = Depends(get_db),
+    token: str = Depends(get_master_token)  # ✅ ADDED: Authentication
+):
     db_task = Task(
         title=task.title,
         description=task.description,
@@ -43,13 +49,25 @@ def create_task(task: TaskCreate, db: Session = Depends(get_db)):
     db.refresh(db_task)
     return db_task
 
-@router.get("")
-@router.get("/")
-def get_tasks(db: Session = Depends(get_db)):
+
+# ✅ CHANGED: Added response_model and authentication dependency
+@router.get("", response_model=List[TaskResponse])
+@router.get("/", response_model=List[TaskResponse])
+def get_tasks(
+    db: Session = Depends(get_db),
+    token: str = Depends(get_master_token)  # ✅ ADDED: Authentication
+):
     return db.query(Task).all()
 
-@router.put("/{task_id}")
-def update_task(task_id: str, task: TaskUpdate, db: Session = Depends(get_db)):
+
+# ✅ CHANGED: Added response_model and authentication dependency
+@router.put("/{task_id}", response_model=TaskResponse)
+def update_task(
+    task_id: str, 
+    task: TaskUpdate, 
+    db: Session = Depends(get_db),
+    token: str = Depends(get_master_token)  # ✅ ADDED: Authentication
+):
     db_task = db.query(Task).filter(Task.id == task_id).first()
     if not db_task:
         raise HTTPException(status_code=404, detail="Task not found")
@@ -62,8 +80,14 @@ def update_task(task_id: str, task: TaskUpdate, db: Session = Depends(get_db)):
     db.refresh(db_task)
     return db_task
 
+
+# ✅ CHANGED: Added authentication dependency
 @router.delete("/{task_id}")
-def delete_task(task_id: str, db: Session = Depends(get_db)):
+def delete_task(
+    task_id: str, 
+    db: Session = Depends(get_db),
+    token: str = Depends(get_master_token)  # ✅ ADDED: Authentication
+):
     db_task = db.query(Task).filter(Task.id == task_id).first()
     if not db_task:
         raise HTTPException(status_code=404, detail="Task not found")
