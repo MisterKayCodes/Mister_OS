@@ -4,6 +4,7 @@ from typing import List, Optional
 from datetime import datetime
 from pydantic import BaseModel
 from data import models, database, schemas
+from data.repository import FinanceRepository
 from api.dependencies import get_master_token
 
 router = APIRouter(prefix="/api/finance", tags=["Finance"])
