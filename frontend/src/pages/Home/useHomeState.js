@@ -80,7 +80,8 @@ export default function useHomeState() {
       // Cache fresh data for offline use
       cacheNotes(notesData);
       cacheFolders(foldersData);
-      if (notesData.length > 0 && !activeNote) selectNote(notesData[0]);
+      const currentViewMode = sessionStorage.getItem('mister_viewMode') || 'home';
+      if (notesData.length > 0 && !activeNote && currentViewMode === 'editor') selectNote(notesData[0]);
     } catch (err) {
       if (err.message === "Invalid Master Token") {
         setIsAuthenticated(false);
@@ -95,7 +96,8 @@ export default function useHomeState() {
         if (cachedNotesData) {
           setNotes(cachedNotesData);
           setFolders(cachedFoldersData || []);
-          if (cachedNotesData.length > 0 && !activeNote) selectNote(cachedNotesData[0]);
+          const currentViewMode = sessionStorage.getItem('mister_viewMode') || 'home';
+          if (cachedNotesData.length > 0 && !activeNote && currentViewMode === 'editor') selectNote(cachedNotesData[0]);
           setIsOffline(true);
         } else {
           showToast(err.message, "error");
