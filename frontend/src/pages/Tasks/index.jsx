@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, Plus, CheckCircle2, Circle, Clock, Trash2 } from 'lucide-react';
+import { ChevronLeft, Plus, CheckCircle2, Circle, Clock, Trash2, Sun, Moon } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
+import { useTheme } from '../../context/ThemeContext';
 import { getTasksApi, createTaskApi, updateTaskApi, deleteTaskApi } from '../../utils/api';
 
 export default function TasksApp({ token, onBack }) {
@@ -8,6 +9,7 @@ export default function TasksApp({ token, onBack }) {
   const [loading, setLoading] = useState(true);
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const { showToast } = useToast();
+  const { isDarkMode, toggleTheme } = useTheme();
 
   useEffect(() => {
     fetchTasks();
@@ -62,22 +64,27 @@ export default function TasksApp({ token, onBack }) {
   const done = tasks.filter(t => t.status === 'done');
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-[#f9f9f9]">
+    <div className="flex-1 flex flex-col h-full bg-[#f9f9f9] dark:bg-gray-900 transition-colors duration-200">
       {/* Header */}
-      <div className="h-14 bg-white border-b border-gray-200 flex items-center px-4 md:px-6 shrink-0 gap-3">
-        <button onClick={onBack} className="text-gray-500 hover:text-black"><ChevronLeft size={22} /></button>
-        <h2 className="font-semibold text-gray-800 text-lg">Task Center</h2>
+      <div className="h-14 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4 md:px-6 shrink-0 gap-3">
+        <div className="flex items-center gap-3">
+          <button onClick={onBack} className="text-gray-500 hover:text-black dark:text-gray-400 dark:hover:text-white"><ChevronLeft size={22} /></button>
+          <h2 className="font-semibold text-gray-800 dark:text-white text-lg">Task Center</h2>
+        </div>
+        <button onClick={toggleTheme} className="text-gray-500 hover:text-black dark:text-gray-400 dark:hover:text-white">
+          {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+        </button>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 md:p-8 max-w-4xl mx-auto w-full">
         {/* Create Task */}
-        <form onSubmit={handleCreate} className="mb-8 flex gap-3 bg-white p-2 rounded-full border border-gray-200 shadow-sm">
+        <form onSubmit={handleCreate} className="mb-8 flex gap-3 bg-white dark:bg-gray-800 p-2 rounded-full border border-gray-200 dark:border-gray-700 shadow-sm">
           <input
             type="text"
             placeholder="Add a new task..."
             value={newTaskTitle}
             onChange={e => setNewTaskTitle(e.target.value)}
-            className="flex-1 pl-4 pr-2 py-2 text-sm bg-transparent focus:outline-none text-gray-800"
+            className="flex-1 pl-4 pr-2 py-2 text-sm bg-transparent focus:outline-none text-gray-800 dark:text-white"
           />
           <button type="submit" disabled={!newTaskTitle.trim()} className="bg-indigo-600 hover:bg-indigo-700 text-white w-10 h-10 rounded-full flex items-center justify-center transition disabled:opacity-50">
             <Plus size={20} />
@@ -95,15 +102,15 @@ export default function TasksApp({ token, onBack }) {
               </h3>
               <div className="space-y-2">
                 {pending.length === 0 ? (
-                  <p className="text-sm text-gray-400 italic bg-white p-4 rounded-xl border border-dashed border-gray-200 text-center">No pending tasks. You're all caught up!</p>
+                  <p className="text-sm text-gray-400 italic bg-white dark:bg-gray-800 p-4 rounded-xl border border-dashed border-gray-200 dark:border-gray-700 text-center">No pending tasks. You're all caught up!</p>
                 ) : (
                   pending.map(task => (
-                    <div key={task.id} className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between group">
+                    <div key={task.id} className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex items-center justify-between group">
                       <div className="flex items-center gap-4">
-                        <button onClick={() => toggleTask(task.id, task.status)} className="text-gray-300 hover:text-indigo-600 transition">
+                        <button onClick={() => toggleTask(task.id, task.status)} className="text-gray-300 dark:text-gray-600 hover:text-indigo-600 dark:hover:text-indigo-400 transition">
                           <Circle size={24} />
                         </button>
-                        <span className="text-gray-800 font-medium">{task.title}</span>
+                        <span className="text-gray-800 dark:text-gray-200 font-medium">{task.title}</span>
                       </div>
                       <button onClick={() => deleteTask(task.id)} className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition p-2">
                         <Trash2 size={18} />
@@ -122,12 +129,12 @@ export default function TasksApp({ token, onBack }) {
                 </h3>
                 <div className="space-y-2">
                   {done.map(task => (
-                    <div key={task.id} className="bg-transparent p-4 rounded-xl border border-gray-200 flex items-center justify-between opacity-60">
+                    <div key={task.id} className="bg-transparent p-4 rounded-xl border border-gray-200 dark:border-gray-700 flex items-center justify-between opacity-60">
                       <div className="flex items-center gap-4">
-                        <button onClick={() => toggleTask(task.id, task.status)} className="text-green-500 hover:text-gray-400 transition">
+                        <button onClick={() => toggleTask(task.id, task.status)} className="text-green-500 hover:text-gray-400 dark:hover:text-gray-500 transition">
                           <CheckCircle2 size={24} />
                         </button>
-                        <span className="text-gray-500 line-through">{task.title}</span>
+                        <span className="text-gray-500 dark:text-gray-400 line-through">{task.title}</span>
                       </div>
                       <button onClick={() => deleteTask(task.id)} className="text-gray-400 hover:text-red-500 transition p-2">
                         <Trash2 size={18} />

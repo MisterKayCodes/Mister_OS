@@ -1,61 +1,48 @@
 import React from 'react';
-import { Edit2, DollarSign, Bot, CheckSquare, ChevronLeft, Shield, FolderPlus, Target, BookOpen } from 'lucide-react';
+import { Edit2, ChevronLeft, Shield, FolderPlus, CheckSquare, Sun, Moon, LayoutDashboard } from 'lucide-react';
+import { useTheme } from '../../../context/ThemeContext';
 
 export default function SidebarHeader({
-  showBack,
   onBack,
   onOpenSecurity,
-  onOpenOmniBrain,
-  onViewExpenses,
-  onOpenWarRoom,
   setShowFolderModal,
   onCreateNote,
   selectMode,
   setSelectMode,
   setSelected,
-  onOpenKnowledge
 }) {
+  const { isDarkMode, toggleTheme } = useTheme();
   return (
-    <div className="p-4 flex justify-between items-center border-b border-[#e0e0e0]">
-      {showBack ? (
-        <button onClick={onBack} className="flex items-center gap-1 text-gray-500 hover:text-black text-sm font-medium">
-          <ChevronLeft size={18} /> Back
+    <div className="p-4 flex justify-between items-center border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 transition-colors">
+      <div className="flex items-center gap-2">
+        {onBack && (
+          <button onClick={onBack} className="flex items-center gap-1 text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white text-sm font-medium mr-1" title="Back to Dashboard">
+            <LayoutDashboard size={16} /> Dashboard
+          </button>
+        )}
+        {!onBack && <span className="font-bold text-gray-800 dark:text-white tracking-tight">Notes</span>}
+      </div>
+      <div className="flex gap-1">
+        <button onClick={toggleTheme} className="text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white transition p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700" title="Toggle theme">
+          {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
         </button>
-      ) : (
-        <div className="flex items-center gap-2">
-          <span className="font-bold text-gray-800 tracking-tight">Mister OS</span>
-        </div>
-      )}
-      <div className="flex gap-2">
-        <button onClick={onOpenSecurity} className="text-gray-500 hover:text-red-600 transition p-1 rounded hover:bg-red-50" title="Security & Devices">
+        <button onClick={onOpenSecurity} className="text-gray-500 dark:text-gray-400 hover:text-red-600 transition p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20" title="Security & Devices">
           <Shield size={18} />
-        </button>
-        <button onClick={onOpenOmniBrain} className="text-purple-600 hover:bg-purple-100 transition p-1 rounded" title="Omni-Brain">
-          <Bot size={18} />
-        </button>
-        <button onClick={onViewExpenses} className="text-gray-500 hover:text-black transition p-1 rounded hover:bg-gray-200" title="View Expenses">
-          <DollarSign size={18} />
-        </button>
-        <button onClick={onOpenWarRoom} className="text-red-500 hover:bg-red-50 transition p-1 rounded" title="War Room">
-          <Target size={18} />
-        </button>
-        <button onClick={onOpenKnowledge} className="text-blue-500 hover:bg-blue-50 transition p-1 rounded" title="Knowledge Base">
-          <BookOpen size={18} />
         </button>
         <button 
           onClick={() => { setSelectMode(s => !s); setSelected([]); }} 
-          className={`p-1 rounded transition ${selectMode ? 'text-red-500 bg-red-50' : 'text-gray-500 hover:bg-gray-200'}`} 
+          className={`p-1 rounded transition ${selectMode ? 'text-red-500 bg-red-50 dark:bg-red-900/20' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'}`} 
           title="Select Notes"
         >
           <CheckSquare size={18} />
         </button>
-        <button onClick={() => setShowFolderModal(true)} className="text-gray-500 hover:text-black transition p-1 rounded hover:bg-gray-200" title="New Folder">
+        <button onClick={() => setShowFolderModal(true)} className="text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white transition p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700" title="New Folder">
           <FolderPlus size={18} />
         </button>
-        <button onClick={() => onCreateNote(null)} className="text-gray-500 hover:text-black transition p-1 rounded hover:bg-gray-200" title="New Note">
+        <button onClick={() => onCreateNote(null)} className="text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white transition p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700" title="New Note">
           <Edit2 size={18} />
         </button>
       </div>
     </div>
   );
-}
+}

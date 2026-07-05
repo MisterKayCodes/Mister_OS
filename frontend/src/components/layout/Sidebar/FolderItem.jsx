@@ -27,24 +27,24 @@ export default function FolderItem({
   return (
     <div
       key={folder.id}
-      className={`border-b border-[#e0e0e0] ${isHovered ? 'bg-blue-50' : ''}`}
+      className={`border-b border-gray-200 dark:border-gray-700 ${isHovered ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}
       onDrop={(e) => handleDrop(e, folder.id)}
       onDragOver={(e) => handleDragOver(e, folder.id)}
       onDragLeave={handleDragLeave}
     >
       <div
         onClick={() => toggleFolder(folder.id)}
-        className="flex items-center justify-between p-3 bg-gray-100 cursor-pointer hover:bg-gray-200 transition"
+        className="flex items-center justify-between p-3 bg-gray-100 dark:bg-gray-700 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600 transition"
       >
-        <div className="flex items-center gap-2 text-gray-700 font-medium text-sm pointer-events-none">
+        <div className="flex items-center gap-2 text-gray-700 dark:text-gray-200 font-medium text-sm pointer-events-none">
           {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
           <Folder size={16} className="text-blue-500" />
-          {folder.name} <span className="text-xs text-gray-400 font-normal">({folderNotes.length})</span>
+          {folder.name} <span className="text-xs text-gray-400 dark:text-gray-500 font-normal">({folderNotes.length})</span>
         </div>
         <div className="flex items-center gap-1">
           <button
             onClick={(e) => { e.stopPropagation(); onCreateNote(folder.id); }}
-            className="p-1 text-gray-400 hover:text-black rounded"
+            className="p-1 text-gray-400 dark:text-gray-500 hover:text-black dark:hover:text-white rounded"
             title="New Note in Folder"
           >
             <Edit2 size={14} />
@@ -56,7 +56,7 @@ export default function FolderItem({
                 onDeleteFolder(folder.id);
               }
             }}
-            className="p-1 text-gray-400 hover:text-red-500 rounded"
+            className="p-1 text-gray-400 dark:text-gray-500 hover:text-red-500 rounded"
             title="Delete Folder"
           >
             <Trash2 size={14} />
@@ -64,9 +64,9 @@ export default function FolderItem({
         </div>
       </div>
       {isExpanded && (
-        <div className="pl-4 bg-[#f9f9f9] min-h-[40px]">
+        <div className="pl-4 bg-gray-50 dark:bg-gray-800 min-h-[40px]">
           {folderNotes.length === 0 ? (
-            <div className="p-4 text-xs text-gray-400">Empty Folder</div>
+            <div className="p-4 text-xs text-gray-400 dark:text-gray-500">Empty Folder</div>
           ) : (
             folderNotes.map(note => (
               <NoteItem

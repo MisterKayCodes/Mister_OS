@@ -55,7 +55,7 @@ export default function Sidebar({
   const rootNotes = notes.filter(n => !n.folder_id);
 
   return (
-    <div className="w-full bg-[#f3f3f3] md:border-r border-[#e0e0e0] flex flex-col h-full relative">
+    <div className="w-full bg-gray-50 dark:bg-gray-800 md:border-r border-gray-200 dark:border-gray-700 flex flex-col h-full relative transition-colors duration-200">
       <SidebarHeader 
         showBack={showBack}
         onBack={onBack}
@@ -102,7 +102,7 @@ export default function Sidebar({
             />
           ))}
           {rootNotes.length === 0 && (
-            <div className="px-4 py-3 text-xs text-gray-400 italic">No notes in root</div>
+            <div className="px-4 py-3 text-xs text-gray-400 dark:text-gray-500 italic">No notes in root</div>
           )}
         </div>
         

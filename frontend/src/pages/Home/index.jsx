@@ -1,27 +1,20 @@
-import React from 'react';
-import { Edit2 } from 'lucide-react';
+import React, { useEffect } from 'react';
+import { Edit2, ChevronLeft } from 'lucide-react';
 import Sidebar from '../../components/layout/Sidebar';
-import AuthScreen from '../../components/layout/AuthScreen';
 import Editor from '../../components/features/Editor';
-import Dashboard from './Dashboard';
-
-import FinanceApp from '../../pages/Finance';
-import LeadsApp from '../../pages/Leads';
-import KnowledgeApp from '../../pages/Knowledge';
-import TasksApp from '../../pages/Tasks';
-import OmniChat from '../../components/features/OmniChat';
 import SecurityModal from '../../components/features/SecurityModal';
 import useHomeState from './useHomeState';
 
-export default function Home() {
+export default function NotesApp({ onBack, token }) {
   const state = useHomeState();
 
-  if (!state.isAuthenticated) return <AuthScreen onLogin={state.handleLogin} />;
-
-  const showSidebar = !state.activeNote && state.viewMode !== 'omnichat' && state.viewMode !== 'finance' && state.viewMode !== 'warroom' && state.viewMode !== 'knowledge';
+  // Override token from props if necessary, but useHomeState uses the master_token anyway
+  useEffect(() => {
+    // If we wanted to sync token from props, we could, but useHomeState is self-contained
+  }, [token]);
 
   return (
-    <div className="flex h-screen overflow-hidden text-gray-800 bg-[#f9f9f9] relative flex-col">
+    <div className="flex h-screen w-full overflow-hidden text-gray-800 dark:text-gray-100 bg-[#f9f9f9] dark:bg-gray-900 relative flex-col transition-colors duration-200">
       {/* Offline Banner */}
       {state.isOffline && (
         <div className="w-full bg-amber-500 text-white text-xs text-center py-1.5 px-4 flex items-center justify-center gap-2 shrink-0 z-50">
@@ -30,8 +23,16 @@ export default function Home() {
         </div>
       )}
 
-      <div className="flex flex-1 overflow-hidden">
-        <div className={`w-full md:w-72 shrink-0 ${showSidebar ? 'flex' : 'hidden md:flex'} flex-col h-full`}>
+      {/* Top Header Mobile Back Button */}
+      <div className="md:hidden flex items-center p-3 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+         <button onClick={onBack} className="text-gray-500 hover:text-black dark:text-gray-400 dark:hover:text-white flex items-center gap-1 font-medium">
+           <ChevronLeft size={20} /> Dashboard
+         </button>
+      </div>
+
+      <div className="flex flex-1 overflow-hidden relative">
+        {/* Sidebar */}
+        <div className={`w-full md:w-72 shrink-0 ${!state.activeNote ? 'flex' : 'hidden md:flex'} flex-col h-full bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 transition-colors`}>
               <Sidebar 
                 notes={state.notes} 
                 folders={state.folders}
@@ -40,61 +41,38 @@ export default function Home() {
                 onCreateNote={state.createNote}
                 onCreateFolder={state.handleCreateFolder}
                 onDeleteFolder={state.handleDeleteFolder}
-                onViewExpenses={state.viewFinance}
-                onOpenWarRoom={state.viewWarRoom}
-                onOpenKnowledge={state.viewKnowledge}
-                onOpenOmniBrain={() => { state.setViewMode('omnichat'); state.setActiveNote(null); }}
+                onViewExpenses={null} // Removed quick links from sidebar since dashboard handles it
+                onOpenWarRoom={null}
+                onOpenKnowledge={null}
+                onOpenOmniBrain={null}
                 onOpenSecurity={() => state.setShowSecurity(true)}
                 onDeleteNotes={state.handleDeleteNotes}
                 onMoveNotes={state.handleMoveNotes}
                 tokenStats={state.tokenStats}
+                onBack={onBack}
               />
         </div>
 
-        <div className={`flex-1 flex bg-white relative overflow-hidden ${showSidebar ? 'hidden md:flex' : 'flex'}`}>
-          {state.viewMode === 'home' ? (
-            <Dashboard 
-              onOpenMenu={() => { state.setViewMode('editor'); state.setActiveNote(null); }}
-              onOpenFinance={state.viewFinance}
-              onOpenWarRoom={state.viewWarRoom}
-              onOpenKnowledge={state.viewKnowledge}
-              onOpenTasks={() => { state.setViewMode('tasks'); state.setActiveNote(null); }}
-              onOpenOmniBrain={() => { state.setViewMode('omnichat'); state.setActiveNote(null); }}
-              tokenStats={state.tokenStats}
-              onLogout={() => { localStorage.removeItem("master_token"); state.handleLogin(""); window.location.reload(); }}
+        {/* Editor Area */}
+        <div className={`flex-1 flex bg-white dark:bg-gray-900 relative overflow-hidden ${!state.activeNote ? 'hidden md:flex' : 'flex'}`}>
+          {state.activeNote ? (
+            <Editor
+              content={state.content}
+              setContent={state.setContent}
+              title={state.title}
+              setTitle={state.setTitle}
+              activeNote={state.activeNote}
+              onBack={() => state.setActiveNote(null)}
+              token={state.token}
             />
-          ) : state.viewMode === 'omnichat' ? (
-            <OmniChat token={state.token} onBack={state.goBack} />
-          ) : state.viewMode === 'finance' ? (
-            <FinanceApp token={state.token} onBack={state.goBack} />
-          ) : state.viewMode === 'warroom' ? (
-            <LeadsApp token={state.token} onBack={state.goBack} />
-          ) : state.viewMode === 'knowledge' ? (
-            <KnowledgeApp token={state.token} onBack={state.goBack} />
-          ) : state.viewMode === 'tasks' ? (
-            <TasksApp token={state.token} onBack={state.goBack} />
-          ) : state.activeNote ? (
-            <>
-              <Editor
-                content={state.content}
-                setContent={state.setContent}
-                title={state.title}
-                setTitle={state.setTitle}
-                activeNote={state.activeNote}
-                onBack={state.goBack}
-                token={state.token}
-              />
-            </>
           ) : (
-            <div className="flex-1 flex items-center justify-center text-gray-400 flex-col gap-4">
+            <div className="flex-1 flex items-center justify-center text-gray-400 dark:text-gray-600 flex-col gap-4">
               <Edit2 size={48} className="opacity-20" />
               <p>Select or create a note.</p>
             </div>
           )}
         </div>
       </div>
-
-
 
       {state.showSecurity && <SecurityModal token={state.token} onClose={() => state.setShowSecurity(false)} />}
     </div>

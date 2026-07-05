@@ -171,17 +171,17 @@ export default function OmniChat({ token, onBack }) {
   };
 
   return (
-    <div className="flex-1 flex h-full bg-white relative overflow-hidden">
+    <div className="flex-1 flex h-full bg-white dark:bg-gray-900 relative overflow-hidden transition-colors duration-200">
       {/* History Sidebar */}
-      <div className={`${showHistory ? 'absolute z-20 translate-x-0' : 'absolute z-20 -translate-x-full md:relative md:translate-x-0'} transition-transform w-64 h-full bg-gray-50 border-r border-gray-200 flex flex-col shrink-0`}>
-        <div className="p-4 border-b border-gray-200">
+      <div className={`${showHistory ? 'absolute z-20 translate-x-0' : 'absolute z-20 -translate-x-full md:relative md:translate-x-0'} transition-transform w-64 h-full bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col shrink-0`}>
+        <div className="p-4 border-b border-gray-200 dark:border-gray-700">
           <button onClick={startNewChat} className="w-full flex items-center justify-center gap-2 bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 transition font-medium text-sm">
             <Plus size={16} /> New Chat
           </button>
         </div>
         <div className="flex-1 overflow-y-auto p-2 space-y-1">
           {sessions.map(s => (
-            <button key={s.id} onClick={() => loadSession(s.id)} className={`w-full text-left p-3 rounded-lg flex items-center gap-2 transition text-sm ${sessionId === s.id ? 'bg-purple-100 text-purple-900 font-medium' : 'hover:bg-gray-200 text-gray-700'}`}>
+            <button key={s.id} onClick={() => loadSession(s.id)} className={`w-full text-left p-3 rounded-lg flex items-center gap-2 transition text-sm ${sessionId === s.id ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-900 dark:text-purple-300 font-medium' : 'hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'}`}>
               <MessageSquare size={16} className="shrink-0" />
               <span className="truncate">{s.title}</span>
             </button>
@@ -191,22 +191,22 @@ export default function OmniChat({ token, onBack }) {
 
       <div className="flex-1 flex flex-col h-full relative w-full">
         {/* Header */}
-        <div className="h-14 border-b border-gray-100 flex items-center px-4 shrink-0 bg-purple-50 justify-between">
+        <div className="h-14 border-b border-gray-100 dark:border-gray-800 flex items-center px-4 shrink-0 bg-purple-50 dark:bg-gray-900 justify-between transition-colors">
           <div className="flex items-center gap-3">
-            <button onClick={onBack} className="md:hidden text-purple-700 hover:text-purple-900">
+            <button onClick={onBack} className="md:hidden text-purple-700 dark:text-purple-400 hover:text-purple-900 dark:hover:text-purple-300">
               <ChevronLeft size={22} />
             </button>
-            <h2 className="font-semibold text-purple-800 flex items-center gap-2">
+            <h2 className="font-semibold text-purple-800 dark:text-purple-400 flex items-center gap-2">
               <Bot size={20} /> Omni-Brain
             </h2>
           </div>
-          <button onClick={() => setShowHistory(s => !s)} className="md:hidden text-purple-700 p-2">
+          <button onClick={() => setShowHistory(s => !s)} className="md:hidden text-purple-700 dark:text-purple-400 p-2">
             <MessageSquare size={20} />
           </button>
         </div>
 
         {/* Chat Area */}
-        <div className="flex-1 overflow-y-auto p-4 md:p-8 bg-gray-50">
+        <div className="flex-1 overflow-y-auto p-4 md:p-8 bg-gray-50 dark:bg-gray-900 transition-colors">
           {isSessionLoading ? (
             <div className="h-full flex flex-col items-center justify-center gap-3 text-purple-400">
               <Loader size={28} className="animate-spin" />
@@ -222,11 +222,11 @@ export default function OmniChat({ token, onBack }) {
                     {msg.role === 'user' ? <User size={16} /> : <Bot size={16} />}
                   </div>
                   <div className={`max-w-[80%] rounded-2xl px-5 py-3 relative group ${
-                    msg.role === 'user' ? 'bg-gray-800 text-white rounded-tr-none' : 'bg-white shadow-sm border border-gray-200 text-gray-800 rounded-tl-none'
+                    msg.role === 'user' ? 'bg-gray-800 dark:bg-gray-700 text-white rounded-tr-none' : 'bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200 rounded-tl-none'
                   }`}>
                     <button 
                       onClick={() => handleCopy(msg.content)}
-                      className={`absolute top-2 ${msg.role === 'user' ? 'left-2 text-gray-300 hover:text-white' : 'right-2 text-gray-400 hover:text-purple-600'} opacity-0 group-hover:opacity-100 transition-opacity p-1`}
+                      className={`absolute top-2 ${msg.role === 'user' ? 'left-2 text-gray-300 hover:text-white' : 'right-2 text-gray-400 hover:text-purple-600 dark:hover:text-purple-400'} opacity-0 group-hover:opacity-100 transition-opacity p-1`}
                       title="Copy message"
                     >
                       <Copy size={14} />
@@ -242,10 +242,10 @@ export default function OmniChat({ token, onBack }) {
                   <div className="w-8 h-8 rounded-full bg-purple-600 text-white flex items-center justify-center shrink-0">
                     <Bot size={16} />
                   </div>
-                  <div className="bg-white shadow-sm border border-gray-200 text-gray-500 rounded-2xl rounded-tl-none px-5 py-3 flex items-center gap-2">
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:0.2s]" />
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:0.4s]" />
+                  <div className="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 rounded-2xl rounded-tl-none px-5 py-3 flex items-center gap-2">
+                    <div className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce" />
+                    <div className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce [animation-delay:0.2s]" />
+                    <div className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce [animation-delay:0.4s]" />
                   </div>
                 </div>
               )}
@@ -255,14 +255,14 @@ export default function OmniChat({ token, onBack }) {
         </div>
 
         {/* Input Area */}
-        <div className="p-4 bg-white border-t border-gray-100 shrink-0">
+        <div className="p-4 bg-white dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700 shrink-0 transition-colors">
           <form onSubmit={handleSend} className="max-w-4xl mx-auto flex gap-2 relative">
             <input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Ask Mister anything about your notes..."
-              className="flex-1 bg-gray-100 rounded-full pl-6 pr-12 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 transition"
+              className="flex-1 bg-gray-100 dark:bg-gray-700 rounded-full pl-6 pr-12 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 dark:text-white transition"
             />
             <button 
               type="submit" 

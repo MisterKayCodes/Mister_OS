@@ -1,6 +1,6 @@
 // Rule: Max 200 lines per file — split if exceeded
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { ChevronLeft, ArrowUpRight, ArrowDownRight, Sun, Moon } from 'lucide-react';
 import { getFinanceOverview, getTransactions, getWallets, getGoals, getSubscriptionsApi } from '../../utils/financeApi';
 import TransactionsTab from './components/TransactionsTab';
 import WalletsTab from './components/WalletsTab';
@@ -9,6 +9,7 @@ import SubscriptionsTab from './components/SubscriptionsTab';
 import InsightsTab from './components/InsightsTab';
 import PriceDbTab from './components/PriceDbTab';
 import { useToast } from '../../context/ToastContext';
+import { useTheme } from '../../context/ThemeContext';
 
 const TABS = ['overview', 'transactions', 'wallets', 'goals', 'subscriptions', 'price-db', 'insights'];
 
@@ -22,6 +23,7 @@ export default function FinanceApp({ token, onBack }) {
   const [subscriptions, setSubscriptions] = useState([]);
   const [loading, setLoading] = useState(true);
   const { showToast } = useToast();
+  const { isDarkMode, toggleTheme } = useTheme();
 
   useEffect(() => { fetchAll(); }, []);
 
@@ -51,21 +53,26 @@ export default function FinanceApp({ token, onBack }) {
     new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', maximumFractionDigits: 0 }).format(amount || 0);
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-[#f9f9f9]">
+    <div className="flex-1 flex flex-col h-full bg-[#f9f9f9] dark:bg-gray-900 transition-colors duration-200">
       {/* Header */}
-      <div className="h-14 bg-white border-b border-gray-200 flex items-center px-4 md:px-6 shrink-0 gap-3">
-        <button onClick={onBack} className="text-gray-500 hover:text-black"><ChevronLeft size={22} /></button>
-        <h2 className="font-semibold text-gray-800 text-lg">Mister Finance</h2>
+      <div className="h-14 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4 md:px-6 shrink-0 gap-3">
+        <div className="flex items-center gap-3">
+          <button onClick={onBack} className="text-gray-500 hover:text-black dark:text-gray-400 dark:hover:text-white"><ChevronLeft size={22} /></button>
+          <h2 className="font-semibold text-gray-800 dark:text-white text-lg">Mister Finance</h2>
+        </div>
+        <button onClick={toggleTheme} className="text-gray-500 hover:text-black dark:text-gray-400 dark:hover:text-white">
+          {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+        </button>
       </div>
 
       {/* Tabs Nav */}
-      <div className="bg-white px-4 md:px-6 border-b border-gray-200 flex flex-wrap md:flex-nowrap gap-2 md:gap-5 shrink-0">
+      <div className="bg-white dark:bg-gray-800 px-4 md:px-6 border-b border-gray-200 dark:border-gray-700 flex flex-wrap md:flex-nowrap gap-2 md:gap-5 shrink-0">
         {TABS.map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
             className={`py-2 md:py-3 text-xs md:text-sm font-medium border-b-2 transition whitespace-nowrap capitalize ${
-              activeTab === tab ? 'border-purple-600 text-purple-700' : 'border-transparent text-gray-500 hover:text-gray-800'
+              activeTab === tab ? 'border-purple-600 text-purple-600 dark:text-purple-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white'
             }`}
           >
             {tab}
