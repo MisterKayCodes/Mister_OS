@@ -29,7 +29,9 @@ class TaskResponse(BaseModel):
     class Config:
         from_attributes = True
 
-@router.post("/", response_model=TaskResponse)
+# Accept both with and without trailing slash
+@router.post("")
+@router.post("/")
 def create_task(task: TaskCreate, db: Session = Depends(get_db)):
     db_task = Task(
         title=task.title,
@@ -41,11 +43,12 @@ def create_task(task: TaskCreate, db: Session = Depends(get_db)):
     db.refresh(db_task)
     return db_task
 
-@router.get("/", response_model=List[TaskResponse])
+@router.get("")
+@router.get("/")
 def get_tasks(db: Session = Depends(get_db)):
     return db.query(Task).all()
 
-@router.put("/{task_id}", response_model=TaskResponse)
+@router.put("/{task_id}")
 def update_task(task_id: str, task: TaskUpdate, db: Session = Depends(get_db)):
     db_task = db.query(Task).filter(Task.id == task_id).first()
     if not db_task:

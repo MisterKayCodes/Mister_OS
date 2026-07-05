@@ -1,7 +1,7 @@
 import { BASE_URL } from './config';
 
 export const getTasksApi = async (token) => {
-  const res = await fetch(`${BASE_URL}/api/tasks`, {
+  const res = await fetch(`${BASE_URL}/api/tasks/`, {
     headers: { 'Authorization': `Bearer ${token}` }
   });
   if (!res.ok) throw new Error("Failed to fetch tasks");
@@ -9,7 +9,7 @@ export const getTasksApi = async (token) => {
 };
 
 export const createTaskApi = async (title, token) => {
-  const res = await fetch(`${BASE_URL}/api/tasks`, {
+  const res = await fetch(`${BASE_URL}/api/tasks/`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
     body: JSON.stringify({ title, description: "" })
