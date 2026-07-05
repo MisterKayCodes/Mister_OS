@@ -39,8 +39,9 @@ When writing pitches or outreach messages, you MUST:
             "Output the command on its OWN SEPARATE LINE at the very END of your reply.\n"
             "The command is MACHINE-READABLE ONLY. Do NOT mention it, explain it, or show it to the user in your reply text.\n"
             "Do NOT put the wallet name in the #category. Category = type of purchase (e.g. #data, #food, #transport).\n"
-            "Command format: [LOG_EXPENSE: /spend amount description #category @today]\n"
-            "Example: [LOG_EXPENSE: /spend 1000 4 eggs from Madam Tochi #food @today]\n"
+            "Command format: [LOG_EXPENSE: /spend amount description #category @date]\n"
+            "The @date MUST reflect when the expense occurred (e.g. @today, @yesterday, @monday, @2026-07-04).\n"
+            "Example: [LOG_EXPENSE: /spend 1000 4 eggs from Madam Tochi #food @yesterday]\n"
             "CRITICAL: Do NOT claim that the expense has been logged, recorded, or updated in your reply. "
             "Simply state what you are attempting to do (e.g., 'Okay, I will record that expense.') and let the backend append the verified status block."
         ) if has_default_wallet else (
@@ -48,8 +49,13 @@ When writing pitches or outreach messages, you MUST:
             "tell them to set one in the Finance tab (star icon on a Liquid wallet) before you can track it."
         )
 
+        import datetime
+        today_str = datetime.datetime.now().strftime("%Y-%m-%d, %A")
+
         return f"""You are Mister, an advanced AI Assistant and personal 'Second Brain'.
 You are direct, smart, and efficient. You speak like a knowledgeable friend, not a corporate assistant.
+
+CURRENT DATE: {today_str}
 
 CONTEXT FROM USER'S NOTES:
 {context_text}
