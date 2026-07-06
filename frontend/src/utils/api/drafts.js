@@ -9,10 +9,11 @@ export const fetchPendingDraftsApi = async (token) => {
   return await res.json();
 };
 
-export const approveDraftApi = async (id, token) => {
+export const approveDraftApi = async (id, editedContent, token) => {
   const res = await fetch(`${getLeadsBase()}/drafts/${id}/approve`, {
     method: "POST",
-    headers: { "X-Master-Token": token }
+    headers: { "Content-Type": "application/json", "X-Master-Token": token },
+    body: JSON.stringify({ edited_content: editedContent })
   });
   if (!res.ok) throw new Error("Failed to approve draft");
   return await res.json();
@@ -36,3 +37,12 @@ export const deleteDraftApi = async (id, token) => {
   if (!res.ok) throw new Error("Failed to delete draft");
   return await res.json();
 };
+
+export const generateFollowupsApi = async (token) => {
+  const res = await fetch(`${getLeadsBase()}/generate-followups`, {
+    method: "POST",
+    headers: { "X-Master-Token": token }
+  });
+  if (!res.ok) throw new Error("Failed to generate follow-ups");
+  return await res.json();
+};

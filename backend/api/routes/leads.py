@@ -4,6 +4,9 @@ from typing import List
 from data import models, schemas, database
 from api.dependencies import get_master_token
 from services.sales_service import SalesService
+import httpx
+import os
+from datetime import datetime, timezone, timedelta
 
 router = APIRouter(prefix="/api/leads", tags=["Leads"])
 
@@ -53,20 +56,142 @@ def get_pending_drafts(db: Session = Depends(database.get_db), token: str = Depe
     return db.query(models.LeadInteraction).filter(models.LeadInteraction.is_draft == True).order_by(models.LeadInteraction.timestamp.desc()).all()
 
 @router.post("/drafts/{interaction_id}/approve")
-async def approve_draft(interaction_id: int, db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
+async def approve_draft(interaction_id: int, req: dict = None, db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
+    from fastapi import Body
     interaction = db.query(models.LeadInteraction).filter(models.LeadInteraction.id == interaction_id).first()
     if not interaction or not interaction.is_draft:
         raise HTTPException(status_code=404, detail="Draft not found")
+    
+    lead = db.query(models.Lead).filter(models.Lead.id == interaction.lead_id).first()
+    
+    # Check if user edited the message — if so, log the correction to the OutreachBrain
+    final_content = interaction.content
+    if req and req.get("edited_content") and req["edited_content"] != interaction.content:
+        final_content = req["edited_content"]
+        brain = db.query(models.OutreachBrain).first()
+        if brain:
+            log = brain.correction_log or []
+            log.append({
+                "original": interaction.content,
+                "corrected": final_content,
+                "reason": req.get("reason", "User correction on follow-up")
+            })
+            brain.correction_log = log
+        interaction.content = final_content
     
     # Mark as no longer a draft
     interaction.is_draft = False
     db.commit()
     db.refresh(interaction)
     
-    # TODO: Dispatch to Telegram Microservice here via HTTP request
-    # requests.post("http://localhost:8001/send", json={"lead_id": interaction.lead_id, "content": interaction.content})
+    # Dispatch to Telegram Microservice
+    telegram_svc_url = os.getenv("TELEGRAM_SVC_URL", "http://127.0.0.1:8012")
+    if lead:
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                await client.post(f"{telegram_svc_url}/send", json={
+                    "username": lead.username,
+                    "content": final_content,
+                    "is_handoff_alert": False
+                })
+        except Exception as e:
+            print(f"[Approve Draft] Telegram dispatch failed for @{lead.username}: {e}")
     
-    return {"status": "approved", "interaction": interaction}
+    return {"status": "approved_and_sent", "interaction": interaction}
+
+@router.post("/generate-followups")
+async def generate_followups(
+    db: Session = Depends(database.get_db),
+    token: str = Depends(get_master_token)
+):
+    """
+    Scans all 'Follow-up' leads idle for 3+ days and generates
+    a contextual AI follow-up draft for each one.
+    """
+    from providers.llm_provider import LLMProvider
+    
+    cutoff = datetime.now(timezone.utc) - timedelta(days=3)
+    followup_leads = db.query(models.Lead).filter(models.Lead.status == "Follow-up").all()
+    
+    generated = 0
+    skipped = 0
+    
+    for lead in followup_leads:
+        # Check there's no pending draft already
+        existing_draft = db.query(models.LeadInteraction).filter(
+            models.LeadInteraction.lead_id == lead.id,
+            models.LeadInteraction.is_draft == True
+        ).first()
+        if existing_draft:
+            skipped += 1
+            continue
+        
+        # Get the last message timestamp
+        last_msg = db.query(models.LeadInteraction).filter(
+            models.LeadInteraction.lead_id == lead.id
+        ).order_by(models.LeadInteraction.timestamp.desc()).first()
+        
+        if last_msg and last_msg.timestamp.replace(tzinfo=timezone.utc) > cutoff:
+            skipped += 1
+            continue  # Too recent, skip
+        
+        # Build full chat history for context
+        history = db.query(models.LeadInteraction).filter(
+            models.LeadInteraction.lead_id == lead.id
+        ).order_by(models.LeadInteraction.timestamp.asc()).all()
+        
+        if not history:
+            skipped += 1
+            continue
+        
+        chat_text = "\n".join([f"{msg.role.upper()}: {msg.content}" for msg in history[-20:]])
+        
+        # Fetch brain for context
+        brain = db.query(models.OutreachBrain).first()
+        advice = brain.advice_text if brain else ""
+        corrections = ""
+        if brain and brain.correction_log:
+            corrections = "\nLEARNING FROM PAST CORRECTIONS:\n"
+            for c in brain.correction_log[-5:]:
+                corrections += f"❌ Bad: {c['original'][:80]}...\n✅ Better: {c['corrected'][:80]}...\n"
+        
+        prompt = f"""You are Mister, an expert Telegram closer following up with a prospect.
+
+Here is the full chat history with @{lead.username}:
+{chat_text}
+
+SALES INTELLIGENCE:
+{advice}
+{corrections}
+
+This prospect has gone quiet. Your job is to write a SHORT, punchy, natural follow-up message.
+Rules:
+- Reference something specific from the previous conversation to show you remember them.
+- Be warm, not desperate. Curiosity works better than pressure.
+- 2-3 lines MAX. No walls of text.
+- No generic "just checking in" messages. Be specific and personal.
+- Do NOT use their username as a greeting. Start naturally.
+Return ONLY the message text. No quotes, no labels."""
+        
+        try:
+            messages = [{"role": "user", "content": prompt}]
+            reply, _ = await LLMProvider.generate_completion(messages=messages, temperature=0.75)
+            
+            draft = models.LeadInteraction(
+                lead_id=lead.id,
+                role="assistant",
+                content=reply.strip(),
+                is_draft=True
+            )
+            db.add(draft)
+            generated += 1
+        except Exception as e:
+            print(f"[Follow-up Gen] Failed for @{lead.username}: {e}")
+            skipped += 1
+    
+    db.commit()
+    return {"status": "ok", "generated": generated, "skipped": skipped}
+
 
 @router.put("/drafts/{interaction_id}")
 def update_draft(interaction_id: int, req: schemas.LeadInteractionBase, db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):

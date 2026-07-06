@@ -242,7 +242,52 @@ export default function OutreachTab({ token }) {
         </div>
       </div>
 
-      {/* ─── SECTION B: DELAY MODE SELECTOR ─── */}
+      {/* ─── NEXT UP PREVIEW ─── */}
+      {stats?.outreach_active && (() => {
+        const nextApproved = queue.find(i => i.status === 'approved');
+        const nextRun = stats?.next_run ? new Date(stats.next_run) : null;
+        const now = new Date();
+        const minsUntil = nextRun ? Math.max(0, Math.round((nextRun - now) / 60000)) : null;
+
+        if (!nextApproved) return (
+          <div className="bg-amber-50 border border-amber-300 rounded-xl p-4 flex items-start gap-3">
+            <AlertTriangle size={18} className="text-amber-500 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-bold text-amber-800">Queue is empty — Outreach is paused!</p>
+              <p className="text-xs text-amber-700 mt-1">The bot is running but has no approved messages to send. Click <strong>Generate Next 10</strong> below and approve some messages to resume sending.</p>
+            </div>
+          </div>
+        );
+
+        return (
+          <div className="bg-gradient-to-r from-emerald-50 to-green-50 border border-emerald-200 rounded-xl p-4 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-full bg-emerald-500 flex items-center justify-center shrink-0">
+                <Clock size={16} className="text-white" />
+              </div>
+              <div>
+                <p className="text-xs text-emerald-600 font-semibold uppercase tracking-wider">Next message sending to</p>
+                <p className="text-sm font-extrabold text-gray-900">@{nextApproved.admin_username}</p>
+                {nextApproved.channel_name && <p className="text-xs text-gray-500">from {nextApproved.channel_name}</p>}
+              </div>
+            </div>
+            <div className="text-right shrink-0">
+              {minsUntil !== null ? (
+                <>
+                  <p className="text-2xl font-black text-emerald-700">{minsUntil}m</p>
+                  <p className="text-[10px] text-emerald-500">until send</p>
+                </>
+              ) : (
+                <p className="text-xs text-emerald-600 font-bold">Sending soon</p>
+              )}
+            </div>
+            <div className="max-w-xs hidden md:block">
+              <p className="text-[11px] text-gray-500 italic line-clamp-2">"{nextApproved.edited_message || nextApproved.generated_message}"</p>
+            </div>
+          </div>
+        );
+      })()}
+
       <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
         <h3 className="text-sm font-bold text-gray-800 mb-3 flex items-center gap-2">
           <Clock size={16} className="text-blue-500" /> Humanized Delay Modes
