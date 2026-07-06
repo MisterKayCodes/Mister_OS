@@ -241,6 +241,22 @@ def update_queue_item(queue_id: int, req: schemas.OutreachQueueUpdate, db: Sessi
         item.status = req.status
         if req.status == "approved":
             item.approved_at = datetime.now(timezone.utc)
+        elif req.status == "sent":
+            admin = db.query(models.AdminLead).filter(models.AdminLead.id == item.admin_lead_id).first()
+            if admin:
+                lead = db.query(models.Lead).filter(models.Lead.username == admin.username).first()
+                if not lead:
+                    ch = db.query(models.ScrapedChannel).filter(models.ScrapedChannel.id == admin.channel_id).first() if admin.channel_id else None
+                    lead = models.Lead(username=admin.username, status="Pitching", channel_username=ch.username if ch else None)
+                    db.add(lead)
+                    db.commit()
+                    db.refresh(lead)
+                
+                # Add interaction
+                msg_content = item.edited_message or item.generated_message
+                interaction = models.LeadInteraction(lead_id=lead.id, role="assistant", content=msg_content)
+                db.add(interaction)
+                db.commit()
     
     db.commit()
     db.refresh(item)
