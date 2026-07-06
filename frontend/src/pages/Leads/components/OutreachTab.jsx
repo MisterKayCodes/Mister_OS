@@ -129,7 +129,7 @@ export default function OutreachTab({ token }) {
   };
 
   const handleSaveAndApprove = async (item) => {
-    const finalMsg = editedMessages[item.id] !== undefined ? editedMessages[item.id] : item.generated_message;
+    const finalMsg = editedMessages[item.id] !== undefined ? editedMessages[item.id] : (item.edited_message || item.generated_message);
     try {
       await updateQueueItemApi(item.id, { 
         edited_message: finalMsg,
@@ -355,7 +355,7 @@ export default function OutreachTab({ token }) {
           ) : (
             <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2">
               {queue.map(item => {
-                const userVal = editedMessages[item.id] !== undefined ? editedMessages[item.id] : item.generated_message;
+                const userVal = editedMessages[item.id] !== undefined ? editedMessages[item.id] : (item.edited_message || item.generated_message);
                 const isEdited = userVal !== item.generated_message;
 
                 return (
