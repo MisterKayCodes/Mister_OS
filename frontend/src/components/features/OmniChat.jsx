@@ -193,7 +193,7 @@ export default function OmniChat({ token, onBack }) {
         {/* Header */}
         <div className="h-14 border-b border-gray-100 dark:border-gray-800 flex items-center px-4 shrink-0 bg-purple-50 dark:bg-gray-900 justify-between transition-colors">
           <div className="flex items-center gap-3">
-            <button onClick={onBack} className="md:hidden text-purple-700 dark:text-purple-400 hover:text-purple-900 dark:hover:text-purple-300">
+            <button onClick={onBack} className="text-purple-700 dark:text-purple-400 hover:text-purple-900 dark:hover:text-purple-300">
               <ChevronLeft size={22} />
             </button>
             <h2 className="font-semibold text-purple-800 dark:text-purple-400 flex items-center gap-2">
