@@ -107,6 +107,16 @@ def ingest_admin(payload: dict, db: Session = Depends(database.get_db)):
     db.add(admin)
     db.commit()
     db.refresh(admin)
+    
+    # Sync to CRM Pipeline
+    if status == "fresh":
+        lead = db.query(models.Lead).filter(models.Lead.username == admin.username).first()
+        if not lead:
+            ch = db.query(models.ScrapedChannel).filter(models.ScrapedChannel.id == admin.channel_id).first() if admin.channel_id else None
+            lead = models.Lead(username=admin.username, status="Fresh", channel_username=ch.username if ch else None)
+            db.add(lead)
+            db.commit()
+            
     return {"status": "created", "id": admin.id}
 
 @router.put("/admins/{admin_id}", response_model=schemas.AdminLeadResponse)
@@ -131,6 +141,15 @@ def create_admin_manual(req: schemas.AdminLeadCreate, db: Session = Depends(data
     db.add(admin)
     db.commit()
     db.refresh(admin)
+    
+    # Sync to CRM Pipeline
+    lead = db.query(models.Lead).filter(models.Lead.username == admin.username).first()
+    if not lead:
+        ch = db.query(models.ScrapedChannel).filter(models.ScrapedChannel.id == admin.channel_id).first() if admin.channel_id else None
+        lead = models.Lead(username=admin.username, status="Fresh", channel_username=ch.username if ch else None)
+        db.add(lead)
+        db.commit()
+
     return admin
 
 @router.delete("/admins/{admin_id}")
