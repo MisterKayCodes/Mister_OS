@@ -219,17 +219,48 @@ async def outreach_status():
 
 @app.post("/api/outreach/force")
 async def force_send():
-    """Forces the outreach loop to skip its sleep and send the next item immediately"""
-    global OUTREACH_RUNNING
-    if not OUTREACH_RUNNING:
-        return {"status": "not_running"}
+    """Directly fetches and sends the next approved queue item right now, bypassing the sleep timer."""
+    # Fetch next approved item
+    q_res = requests.get(f"{MAIN_BACKEND_URL}/api/outreach/queue?status=approved", headers=HEADERS)
+    if not q_res.ok:
+        raise HTTPException(status_code=500, detail="Could not fetch queue from backend")
     
-    # Just clear the next_outreach_run time in the main DB
-    # The loop will see it's clear (or in the past) and immediately send
+    queue_items = q_res.json()
+    if not queue_items:
+        raise HTTPException(status_code=404, detail="No approved items in queue to send")
+    
+    item = queue_items[0]
+    queue_id = item["id"]
+    username = item.get("admin_username")
+    message = item.get("edited_message") or item["generated_message"]
+    admin_id = item["admin_lead_id"]
+    
+    if not username:
+        raise HTTPException(status_code=400, detail="Queue item has no username")
+    
+    # Send directly via Telegram
+    try:
+        await client.send_message(username, message)
+    except Exception as e:
+        requests.put(f"{MAIN_BACKEND_URL}/api/outreach/queue/{queue_id}", json={"status": "failed"}, headers=HEADERS)
+        raise HTTPException(status_code=500, detail=f"Telegram send failed: {str(e)}")
+    
+    # Mark as sent
+    requests.put(f"{MAIN_BACKEND_URL}/api/outreach/queue/{queue_id}", json={"status": "sent"}, headers=HEADERS)
+    
+    # Log it
+    requests.post(f"{MAIN_BACKEND_URL}/api/hunts/outreach/log", json={
+        "admin_lead_id": admin_id,
+        "content": message,
+        "message_variant": None
+    }, headers=HEADERS)
+    
+    # Also reset the next_outreach_run so the loop continues normally from now
     now_iso = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     requests.put(f"{MAIN_BACKEND_URL}/api/hunts/settings", json={"next_outreach_run": now_iso}, headers=HEADERS)
     
-    return {"status": "forced"}
+    print(f"[Outreach] ⚡ Force sent to @{username}")
+    return {"status": "sent", "username": username}
 
 if __name__ == "__main__":
     import uvicorn

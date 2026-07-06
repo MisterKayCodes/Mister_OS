@@ -284,10 +284,12 @@ export default function OutreachTab({ token }) {
                 onClick={async () => {
                   try {
                     await forceOutreachApi();
-                    alert("Forced! Bot will skip the remaining wait time.");
+                  } catch(e) { alert(e.message); return; }
+                  alert("⚡ Forced! Bot will skip the remaining wait and send now.");
+                  try {
                     const s = await fetchOutreachStatsApi(token);
                     setStats(s);
-                  } catch(e) { alert(e.message); }
+                  } catch(_) {}
                 }}
                 className="mt-1 bg-emerald-600 text-white hover:bg-emerald-700 text-[9px] font-bold px-2 py-0.5 rounded shadow-sm transition"
               >
