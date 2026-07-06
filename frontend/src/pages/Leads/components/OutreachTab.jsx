@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { 
   fetchOutreachStatsApi, fetchCrmSettingsApi, updateCrmSettingsApi,
-  startOutreachApi, stopOutreachApi 
+  startOutreachApi, stopOutreachApi, forceOutreachApi
 } from '../../../utils/huntsApi';
 import { 
   fetchBrainApi, updateBrainApi, fetchQueueApi, fillQueueApi, 
@@ -280,6 +280,19 @@ export default function OutreachTab({ token }) {
               ) : (
                 <p className="text-xs text-emerald-600 font-bold">Sending soon</p>
               )}
+              <button 
+                onClick={async () => {
+                  try {
+                    await forceOutreachApi();
+                    alert("Forced! Bot will skip the remaining wait time.");
+                    const s = await fetchOutreachStatsApi(token);
+                    setStats(s);
+                  } catch(e) { alert(e.message); }
+                }}
+                className="mt-1 bg-emerald-600 text-white hover:bg-emerald-700 text-[9px] font-bold px-2 py-0.5 rounded shadow-sm transition"
+              >
+                ⚡ Force Send Now
+              </button>
             </div>
             <div className="max-w-xs hidden md:block">
               <p className="text-[11px] text-gray-500 italic line-clamp-2">"{nextApproved.edited_message || nextApproved.generated_message}"</p>

@@ -145,8 +145,19 @@ async def outreach_loop():
             
             # 4. Send via Telegram
             print(f"[Outreach] Sending to @{username}...")
-            await client.send_message(username, message)
-            
+            try:
+                await client.send_message(username, message)
+            except Exception as send_err:
+                print(f"[Outreach] ❌ Failed to send to @{username}: {send_err}")
+                requests.put(f"{MAIN_BACKEND_URL}/api/outreach/queue/{queue_id}", json={"status": "failed"}, headers=HEADERS)
+                # Log the failure as an interaction so they see it in the CRM
+                requests.post(f"{MAIN_BACKEND_URL}/api/hunts/outreach/log", json={
+                    "admin_lead_id": admin_id,
+                    "content": f"[SYSTEM: Failed to send via Telegram. Error: {str(send_err)}]",
+                    "message_variant": None
+                }, headers=HEADERS)
+                continue  # Skip to the next one instantly without sleeping
+
             # 5. Mark queue item as sent
             requests.put(f"{MAIN_BACKEND_URL}/api/outreach/queue/{queue_id}", json={"status": "sent"}, headers=HEADERS)
             
@@ -205,6 +216,20 @@ async def stop_outreach():
 @app.get("/api/outreach/status")
 async def outreach_status():
     return {"running": OUTREACH_RUNNING}
+
+@app.post("/api/outreach/force")
+async def force_send():
+    """Forces the outreach loop to skip its sleep and send the next item immediately"""
+    global OUTREACH_RUNNING
+    if not OUTREACH_RUNNING:
+        return {"status": "not_running"}
+    
+    # Just clear the next_outreach_run time in the main DB
+    # The loop will see it's clear (or in the past) and immediately send
+    now_iso = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    requests.put(f"{MAIN_BACKEND_URL}/api/hunts/settings", json={"next_outreach_run": now_iso}, headers=HEADERS)
+    
+    return {"status": "forced"}
 
 if __name__ == "__main__":
     import uvicorn

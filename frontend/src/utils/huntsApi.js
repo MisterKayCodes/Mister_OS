@@ -106,6 +106,12 @@ export const stopOutreachApi = async () => {
   return await res.json();
 };
 
+export const forceOutreachApi = async () => {
+  const res = await fetch(`${MICROSERVICE_BASE}/force`, { method: "POST" });
+  if (!res.ok) throw new Error("Failed to force outreach send");
+  return await res.json();
+};
+
 export const runHuntWorkerApi = async (seed, limit, token) => {
   const res = await fetch(`${HUNTS_BASE}/run`, {
     method: "POST",
