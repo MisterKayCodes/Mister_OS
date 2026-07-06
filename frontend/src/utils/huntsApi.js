@@ -91,9 +91,8 @@ export const generateTemplatesApi = async (transcript, token) => {
   return await res.json();
 };
 
-// --- Outreach Worker Control (Hits Microservice Port 8001) ---
-const fallbackMicroservice = `http://${window.location.hostname || "localhost"}:8001`;
-const MICROSERVICE_BASE = `${import.meta.env.VITE_MICROSERVICE_BASE_URL || fallbackMicroservice}/api/outreach`;
+// --- Outreach Worker Control (Proxied through main API via /telegram-svc/) ---
+const MICROSERVICE_BASE = `${BASE_URL}/telegram-svc/api/outreach`;
 
 export const startOutreachApi = async () => {
   const res = await fetch(`${MICROSERVICE_BASE}/start`, { method: "POST" });
