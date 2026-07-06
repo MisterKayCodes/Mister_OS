@@ -255,12 +255,21 @@ async def force_send():
         "message_variant": None
     }, headers=HEADERS)
     
-    # Also reset the next_outreach_run so the loop continues normally from now
-    now_iso = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
-    requests.put(f"{MAIN_BACKEND_URL}/api/hunts/settings", json={"next_outreach_run": now_iso}, headers=HEADERS)
+    # Schedule the NEXT send with a proper humanized delay (don't reset to "now" or loop sends immediately)
+    set_res = requests.get(f"{MAIN_BACKEND_URL}/api/hunts/settings", headers=HEADERS)
+    settings = set_res.json() if set_res.ok else {}
+    delay_mode = settings.get("delay_mode", "balanced")
+    DELAY_MODES = {"safe": (45, 180), "balanced": (20, 90), "aggressive": (10, 45)}
+    min_delay, max_delay = DELAY_MODES.get(delay_mode, (20, 90))
+    import random
+    delay_minutes = random.uniform(min_delay, max_delay)
+    delay_seconds = int(delay_minutes * 60)
+    next_run_time = datetime.now(timezone.utc).timestamp() + delay_seconds
+    next_run_iso = datetime.fromtimestamp(next_run_time, tz=timezone.utc).isoformat()
+    requests.put(f"{MAIN_BACKEND_URL}/api/hunts/settings", json={"next_outreach_run": next_run_iso}, headers=HEADERS)
     
-    print(f"[Outreach] ⚡ Force sent to @{username}")
-    return {"status": "sent", "username": username}
+    print(f"[Outreach] ⚡ Force sent to @{username}. Next send in {delay_minutes:.1f} min.")
+    return {"status": "sent", "username": username, "next_run_minutes": round(delay_minutes, 1)}
 
 if __name__ == "__main__":
     import uvicorn

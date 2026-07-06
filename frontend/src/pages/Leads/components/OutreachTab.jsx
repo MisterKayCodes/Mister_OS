@@ -283,13 +283,11 @@ export default function OutreachTab({ token }) {
               <button 
                 onClick={async () => {
                   try {
-                    await forceOutreachApi();
-                  } catch(e) { alert(e.message); return; }
-                  alert("⚡ Forced! Bot will skip the remaining wait and send now.");
-                  try {
-                    const s = await fetchOutreachStatsApi(token);
-                    setStats(s);
-                  } catch(_) {}
+                    const res = await forceOutreachApi();
+                    alert(`⚡ Sent to @${res.username}! Next message in ~${res.next_run_minutes} min.`);
+                    const s = await fetchOutreachStatsApi(token).catch(() => null);
+                    if (s) setStats(s);
+                  } catch(e) { alert(`Error: ${e.message}`); }
                 }}
                 className="mt-1 bg-emerald-600 text-white hover:bg-emerald-700 text-[9px] font-bold px-2 py-0.5 rounded shadow-sm transition"
               >
