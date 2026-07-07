@@ -97,13 +97,13 @@ const MICROSERVICE_BASE = `${BASE_URL}/telegram-svc/api/outreach`;
 export const startOutreachApi = async () => {
   const res = await fetch(`${MICROSERVICE_BASE}/start`, { method: "POST" });
   if (!res.ok) throw new Error("Failed to start outreach");
-  return await res.json();
+  return res.json().catch(() => ({ status: "started" }));
 };
 
 export const stopOutreachApi = async () => {
   const res = await fetch(`${MICROSERVICE_BASE}/stop`, { method: "POST" });
   if (!res.ok) throw new Error("Failed to stop outreach");
-  return await res.json();
+  return res.json().catch(() => ({ status: "stopped" }));
 };
 
 export const forceOutreachApi = async () => {

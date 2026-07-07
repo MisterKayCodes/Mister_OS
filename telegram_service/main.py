@@ -202,14 +202,12 @@ async def start_outreach():
 @app.post("/api/outreach/stop")
 async def stop_outreach():
     global OUTREACH_RUNNING, outreach_task
-    if not OUTREACH_RUNNING:
-        return {"status": "not_running"}
-        
     OUTREACH_RUNNING = False
     if outreach_task:
         outreach_task.cancel()
+        outreach_task = None
         
-    # Update DB and clear next_run so it doesn't resume a stale timer later
+    # Always sync DB regardless of previous state
     requests.put(f"{MAIN_BACKEND_URL}/api/hunts/settings", json={"outreach_active": False, "next_outreach_run": None}, headers=HEADERS)
     return {"status": "stopped"}
 
