@@ -129,6 +129,8 @@ export default function HuntsTab({ token }) {
                         </td>
                         <td className="p-3 text-gray-500 text-xs capitalize">{admin.source}</td>
                         <td className="p-3 flex items-center gap-2">
+                          <button onClick={() => handleStatusChange(admin, 'outreach_sent')}
+                            className="text-xs text-blue-500 hover:bg-blue-50 px-2 py-1 rounded transition">Mark Sent</button>
                           <button onClick={() => handleStatusChange(admin, 'dead')}
                             className="text-xs text-red-500 hover:bg-red-50 px-2 py-1 rounded transition">Mark Dead</button>
                           <button onClick={() => handleDeleteAdmin(admin.id)}

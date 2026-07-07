@@ -126,6 +126,15 @@ def update_admin(admin_id: int, req: schemas.AdminLeadUpdate, db: Session = Depe
         raise HTTPException(status_code=404, detail="Admin lead not found")
     for k, v in req.dict(exclude_unset=True).items():
         setattr(admin, k, v)
+        
+    # If manually marked as sent, sync to CRM Lead
+    if req.status == 'outreach_sent':
+        from datetime import datetime, timezone
+        admin.contacted_at = datetime.now(timezone.utc)
+        lead = db.query(models.Lead).filter(models.Lead.username == admin.username).first()
+        if lead and lead.status == 'Fresh':
+            lead.status = 'Pitching'
+            
     db.commit()
     db.refresh(admin)
     return admin
