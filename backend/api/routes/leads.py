@@ -111,6 +111,15 @@ async def generate_followups(
     from providers.llm_provider import LLMProvider
     
     cutoff = datetime.now(timezone.utc) - timedelta(days=3)
+    
+    # Auto-transition stale 'Pitching' leads to 'Follow-up' before scanning
+    stale_pitching = db.query(models.Lead).filter(models.Lead.status == "Pitching").all()
+    for p_lead in stale_pitching:
+        last_msg = db.query(models.LeadInteraction).filter(models.LeadInteraction.lead_id == p_lead.id).order_by(models.LeadInteraction.timestamp.desc()).first()
+        if last_msg and last_msg.timestamp.replace(tzinfo=timezone.utc) < cutoff:
+            p_lead.status = "Follow-up"
+    db.commit()
+
     followup_leads = db.query(models.Lead).filter(models.Lead.status == "Follow-up").all()
     
     generated = 0

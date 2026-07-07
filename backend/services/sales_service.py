@@ -14,7 +14,11 @@ class SalesService:
         # 1. Ensure lead exists
         lead = LeadRepository.get_by_username(db, lead_username)
         if not lead:
-            lead = LeadRepository.create(db, {"username": lead_username, "status": "Cold"})
+            lead = LeadRepository.create(db, {"username": lead_username, "status": "Hot"})
+            
+        # If user replied, mark them as Hot!
+        if role == "user":
+            lead.status = "Hot"
         
         # 2. Log interaction
         interaction = models.LeadInteraction(lead_id=lead.id, role=role, content=message)

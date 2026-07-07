@@ -251,6 +251,10 @@ def update_queue_item(queue_id: int, req: schemas.OutreachQueueUpdate, db: Sessi
                     db.add(lead)
                     db.commit()
                     db.refresh(lead)
+                else:
+                    if lead.status == "Fresh":
+                        lead.status = "Pitching"
+                        db.commit()
                 
                 # Add interaction
                 msg_content = item.edited_message or item.generated_message
