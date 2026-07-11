@@ -10,6 +10,7 @@ export default function TransactionsTab({ transactions, wallets, formatNGN, toke
   const { showToast } = useToast();
   const [deletingId, setDeletingId] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editingTransaction, setEditingTransaction] = useState(null);
   const [insufficientFundsError, setInsufficientFundsError] = useState(null);
   const [pendingTransaction, setPendingTransaction] = useState(null);
 
@@ -47,6 +48,19 @@ export default function TransactionsTab({ transactions, wallets, formatNGN, toke
     const newData = { ...pendingTransaction, wallet_id: walletId };
     setInsufficientFundsError(null);
     await handleAddTransaction(newData);
+  };
+
+  const handleEditTransaction = async (data) => {
+    try {
+      // We need updateTransactionApi from financeApi
+      const { updateTransactionApi } = await import('../../../utils/financeApi');
+      await updateTransactionApi(editingTransaction.id, data, token);
+      showToast("Transaction updated!", "success");
+      setEditingTransaction(null);
+      if (fetchAll) await fetchAll();
+    } catch (err) {
+      showToast(err.data?.detail || err.message || "Failed to update transaction", "error");
+    }
   };
 
   // 1. Sort transactions by date descending
@@ -120,8 +134,13 @@ export default function TransactionsTab({ transactions, wallets, formatNGN, toke
                           <span className="text-[11px] font-medium bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 px-2 py-0.5 rounded-md">
                             #{tx.category}
                           </span>
-                          <span className="text-xs text-gray-400">
-                            {new Date(tx.date).toLocaleDateString()}
+                          {tx.tags && tx.tags.split(',').map(tag => (
+                            <span key={tag} className="text-[10px] font-medium bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded text-opacity-80">
+                              #{tag.trim()}
+                            </span>
+                          ))}
+                          <span className="text-xs text-gray-400 ml-1">
+                            {new Date(tx.date).toLocaleDateString('en-GB')} {tx.time && <span className="ml-1 text-[10px]">{tx.time}</span>}
                           </span>
                         </div>
                       </div>
@@ -138,6 +157,13 @@ export default function TransactionsTab({ transactions, wallets, formatNGN, toke
                           </p>
                         )}
                       </div>
+                      <button 
+                        onClick={() => setEditingTransaction(tx)} 
+                        className="p-1.5 text-gray-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 hover:text-blue-600 dark:hover:text-blue-400 rounded-lg transition"
+                        title="Edit transaction"
+                      >
+                        <ArrowUpRight size={16} className="rotate-45" /> {/* Using as edit icon placeholder, or import Pencil */}
+                      </button>
                       <button 
                         onClick={() => handleDelete(tx.id)} 
                         disabled={deletingId === tx.id}
@@ -160,6 +186,15 @@ export default function TransactionsTab({ transactions, wallets, formatNGN, toke
           wallets={wallets}
           onClose={() => setShowAddModal(false)}
           onSubmit={handleAddTransaction}
+        />
+      )}
+
+      {editingTransaction && (
+        <AddTransactionModal 
+          wallets={wallets}
+          onClose={() => setEditingTransaction(null)}
+          onSubmit={handleEditTransaction}
+          initial={editingTransaction}
         />
       )}
 

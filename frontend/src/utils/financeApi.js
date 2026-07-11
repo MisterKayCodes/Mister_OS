@@ -29,6 +29,19 @@ export const createTransactionApi = async (data, token) => {
   return await res.json();
 };
 
+export const updateTransactionApi = async (id, data, token) => {
+  const res = await fetch(`${API_BASE}/transactions/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", "X-Master-Token": token },
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw { status: res.status, data: errorData };
+  }
+  return await res.json();
+};
+
 export const deleteTransactionApi = async (txId, token) => {
   const res = await fetch(`${API_BASE}/transactions/${txId}`, {
     method: "DELETE",
