@@ -239,7 +239,7 @@ export default function LoansTab({ loans = [], wallets = [], formatNGN, token, f
                       <h4 className="font-bold text-gray-900 dark:text-white text-lg">{loan.title}</h4>
                       {loan.payment_type === 'one-time' && firstDue && (
                         <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
-                          <Clock size={12}/> Due: {new Date(firstDue).toLocaleDateString()}
+                          <Clock size={12}/> Due: {new Date(firstDue).toLocaleDateString('en-GB')}
                         </p>
                       )}
                     </div>
@@ -270,7 +270,7 @@ export default function LoansTab({ loans = [], wallets = [], formatNGN, token, f
                                 <div className="flex items-center gap-2">
                                   {inst.status === 'paid' ? <CheckCircle size={14} className="text-green-500" /> : <Clock size={14} className="text-orange-400" />}
                                   <span className={inst.status === 'paid' ? 'text-gray-400 line-through text-xs' : 'text-gray-700 dark:text-gray-300 text-xs'}>
-                                    {new Date(inst.due_date).toLocaleDateString()}
+                                    {new Date(inst.due_date).toLocaleDateString('en-GB')}
                                   </span>
                                 </div>
                                 <div className="flex items-center gap-3">
