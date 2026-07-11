@@ -160,6 +160,7 @@ export default function FinanceApp({ token, onBack }) {
                   <p className="text-xs text-gray-400 mt-1">{formatNGN(overview.month_saved)} saved this month</p>
                 </div>
               </div>
+            </div>
             )}
 
             {activeTab === 'transactions' && <TransactionsTab transactions={transactions} wallets={wallets} formatNGN={formatNGN} token={token} fetchAll={fetchAll} />}
