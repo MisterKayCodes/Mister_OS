@@ -15,6 +15,12 @@ def create_note(note: schemas.NoteCreate, db: Session = Depends(database.get_db)
 def read_notes(skip: int = 0, limit: int = 100, db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
     return db.query(models.Note).order_by(models.Note.updated_at.desc()).offset(skip).limit(limit).all()
 
+@router.get("/count")
+def count_notes(db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
+    from sqlalchemy import func
+    count = db.query(func.count(models.Note.id)).scalar()
+    return {"count": count}
+
 # --- Folders ---
 @router.get("/folders", response_model=List[schemas.FolderResponse])
 def get_folders(db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):

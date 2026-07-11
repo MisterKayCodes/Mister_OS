@@ -8,7 +8,22 @@ class Wallet(Base):
     name = Column(String)
     type = Column(String)
     balance = Column(Integer, default=0)
+    opening_balance = Column(Integer, default=0)
     color = Column(String, default="#3b82f6")
+
+class Loan(Base):
+    __tablename__ = "loans"
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String)
+    principal_amount = Column(Integer)
+    repayment_amount = Column(Integer)
+    payment_type = Column(String) # 'one-time', 'installments'
+    installments_count = Column(Integer, default=1)
+    amount_paid = Column(Integer, default=0)
+    due_date = Column(DateTime(timezone=True))
+    settled = Column(Boolean, default=False)
+    wallet_id = Column(Integer, nullable=True) # Wallet the principal went into / payments come from initially
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 class Transaction(Base):
     __tablename__ = "transactions"

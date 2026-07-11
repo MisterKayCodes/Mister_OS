@@ -21,21 +21,15 @@ class FinanceService:
         existing_txs = FinanceRepository.get_transactions_by_note(db, note_id)
         existing_pool = list(existing_txs)
 
-        # 4. Handle Wallet Deductions
+        # We no longer handle Wallet Deductions directly here.
+        # Balances are derived from transactions.
         from data import models
         settings = db.query(models.FinanceSettings).first()
         default_wallet = None
         if settings and settings.default_wallet_id:
             default_wallet = db.query(models.Wallet).filter(models.Wallet.id == settings.default_wallet_id).first()
 
-        # Reverse old transactions from wallet
-        if default_wallet:
-            for ex_tx in existing_pool:
-                if ex_tx.type == "expense":
-                    default_wallet.balance += ex_tx.amount_naira
-                elif ex_tx.type == "income":
-                    default_wallet.balance -= ex_tx.amount_naira
-
+        
         # 5. Clear old Memory
         FinanceRepository.delete_transactions_by_note(db, note_id)
 
@@ -59,22 +53,35 @@ class FinanceService:
                 else:
                     tx_data["parsed_date"] = datetime.datetime.now()
             
-            # Apply new transactions to wallet
-            if default_wallet:
-                if tx_type == "expense":
-                    default_wallet.balance -= naira_amt
-                elif tx_type == "income":
-                    default_wallet.balance += naira_amt
-            
             # Re-map key for DB
             db_date = tx_data.pop("parsed_date")
             tx_data["date"] = db_date
             tx_data["note_id"] = note_id
             
+            if default_wallet:
+                tx_data["wallet_id"] = default_wallet.id
+            
             FinanceRepository.create_transaction(db, tx_data)
             
-        if default_wallet:
-            db.commit()
+        FinanceService.recalculate_wallet_balances(db)
+
+    @staticmethod
+    def recalculate_wallet_balances(db: Session):
+        wallets = db.query(models.Wallet).all()
+        for wallet in wallets:
+            txs = db.query(models.Transaction).filter(
+                models.Transaction.wallet_id == wallet.id
+            ).all()
+            
+            calculated = wallet.opening_balance if wallet.opening_balance else 0
+            for tx in txs:
+                if tx.type == "income":
+                    calculated += tx.amount_naira
+                elif tx.type == "expense":
+                    calculated -= tx.amount_naira
+            
+            wallet.balance = calculated
+        db.commit()
 
     @staticmethod
     def execute_autonomous_commands(db: Session, llm_reply: str) -> tuple[str, list[dict]]:
@@ -211,9 +218,22 @@ class FinanceService:
                     })
                     continue
                     
-                w_from.balance -= amount
-                w_to.balance += amount
-                db.commit()
+                FinanceRepository.create_transaction(db, {
+                    "type": "expense",
+                    "amount_naira": amount,
+                    "description": f"Transfer to {w_to.name}",
+                    "category": "transfer",
+                    "wallet_id": w_from.id
+                })
+                FinanceRepository.create_transaction(db, {
+                    "type": "income",
+                    "amount_naira": amount,
+                    "description": f"Transfer from {w_from.name}",
+                    "category": "transfer",
+                    "wallet_id": w_to.id
+                })
+                
+                FinanceService.recalculate_wallet_balances(db)
                 
                 results.append({
                     "action": "transfer",

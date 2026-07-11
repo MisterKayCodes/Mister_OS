@@ -5,6 +5,7 @@ from datetime import datetime
 from pydantic import BaseModel
 from data import models, database, schemas
 from data.repository import FinanceRepository
+from services.finance_service import FinanceService
 from api.dependencies import get_master_token
 
 router = APIRouter(prefix="/api/finance", tags=["Finance"])
@@ -43,6 +44,23 @@ class DebtCreate(BaseModel):
     description: str
 
 class DefaultWalletUpdate(BaseModel):
+    wallet_id: Optional[int] = None
+
+class TransactionCreate(BaseModel):
+    type: str # 'expense', 'income', 'save'
+    amount_naira: int
+    description: str
+    category: str = "uncategorized"
+    wallet_id: int
+    date: Optional[datetime] = None
+
+class LoanCreate(BaseModel):
+    title: str
+    principal_amount: int
+    repayment_amount: int
+    payment_type: str
+    installments_count: Optional[int] = 1
+    due_date: Optional[datetime] = None
     wallet_id: Optional[int] = None
 
 # --- Overview ---
@@ -102,6 +120,35 @@ def update_default_wallet(req: DefaultWalletUpdate, db: Session = Depends(databa
 def get_transactions(db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
     return db.query(models.Transaction).order_by(models.Transaction.date.desc()).all()
 
+@router.post("/transactions", response_model=schemas.TransactionResponse)
+def create_transaction(req: TransactionCreate, db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
+    w = db.query(models.Wallet).filter(models.Wallet.id == req.wallet_id).first()
+    if not w:
+        raise HTTPException(status_code=404, detail="Wallet not found")
+        
+    if req.type == "expense":
+        # Ensure latest balance
+        FinanceService.recalculate_wallet_balances(db)
+        db.refresh(w)
+        if w.balance < req.amount_naira:
+            other_wallets = db.query(models.Wallet).filter(models.Wallet.id != w.id, models.Wallet.balance >= req.amount_naira).all()
+            alts = [{"id": alt.id, "name": alt.name, "balance": alt.balance} for alt in other_wallets]
+            from fastapi.responses import JSONResponse
+            return JSONResponse(status_code=400, content={
+                "error": "insufficient_funds",
+                "wallet_name": w.name,
+                "available": w.balance,
+                "other_wallets": alts
+            })
+            
+    tx_data = req.dict(exclude_unset=True)
+    if not tx_data.get("date"):
+        tx_data["date"] = datetime.now()
+        
+    tx = FinanceRepository.create_transaction(db, tx_data)
+    FinanceService.recalculate_wallet_balances(db)
+    return tx
+
 @router.delete("/transactions/{tx_id}")
 def delete_transaction(tx_id: int, db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
     tx = db.query(models.Transaction).filter(models.Transaction.id == tx_id).first()
@@ -146,14 +193,27 @@ def delete_transaction(tx_id: int, db: Session = Depends(database.get_db), token
 # --- Wallets ---
 @router.get("/wallets", response_model=List[schemas.WalletResponse])
 def get_wallets(db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
+    FinanceService.recalculate_wallet_balances(db)
     return db.query(models.Wallet).all()
 
 @router.post("/wallets", response_model=schemas.WalletResponse)
 def create_wallet(req: WalletCreate, db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
-    w = models.Wallet(name=req.name, type=req.type, color=req.color, balance=req.balance)
+    w = models.Wallet(name=req.name, type=req.type, color=req.color, opening_balance=req.balance, balance=req.balance)
     db.add(w)
     db.commit()
     db.refresh(w)
+    
+    if req.balance > 0:
+        FinanceRepository.create_transaction(db, {
+            "type": "income",
+            "amount_naira": req.balance,
+            "description": "Opening balance",
+            "category": "opening-balance",
+            "wallet_id": w.id
+        })
+        FinanceService.recalculate_wallet_balances(db)
+        db.refresh(w)
+        
     return w
 
 @router.put("/wallets/{wallet_id}/deposit")
@@ -161,9 +221,21 @@ def deposit_to_wallet(wallet_id: int, req: WalletDeposit, db: Session = Depends(
     w = db.query(models.Wallet).filter(models.Wallet.id == wallet_id).first()
     if not w:
         raise HTTPException(status_code=404, detail="Wallet not found")
-    w.balance += req.amount
-    db.commit()
-    db.refresh(w)
+        
+    tx_type = "income" if req.amount >= 0 else "expense"
+    amt = abs(req.amount)
+    
+    if amt > 0:
+        FinanceRepository.create_transaction(db, {
+            "type": tx_type,
+            "amount_naira": amt,
+            "description": "Wallet deposit/withdrawal",
+            "category": "deposit",
+            "wallet_id": w.id
+        })
+        FinanceService.recalculate_wallet_balances(db)
+        db.refresh(w)
+        
     return w
 
 @router.post("/wallets/transfer")
@@ -256,6 +328,90 @@ def settle_debt(debt_id: int, db: Session = Depends(database.get_db), token: str
     d.settled = True
     db.commit()
     return {"message": "Debt settled"}
+
+# --- Loans ---
+@router.get("/loans")
+def get_loans(db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
+    return db.query(models.Loan).all()
+
+@router.post("/loans")
+def create_loan(req: LoanCreate, db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
+    loan = models.Loan(
+        title=req.title,
+        principal_amount=req.principal_amount,
+        repayment_amount=req.repayment_amount,
+        payment_type=req.payment_type,
+        installments_count=req.installments_count,
+        due_date=req.due_date,
+        wallet_id=req.wallet_id
+    )
+    db.add(loan)
+    db.commit()
+    db.refresh(loan)
+    
+    if loan.wallet_id and loan.principal_amount > 0:
+        FinanceRepository.create_transaction(db, {
+            "type": "income",
+            "amount_naira": loan.principal_amount,
+            "description": f"Loan Received: {loan.title}",
+            "category": "loan",
+            "wallet_id": loan.wallet_id
+        })
+        FinanceService.recalculate_wallet_balances(db)
+        
+    return loan
+
+@router.put("/loans/{loan_id}/pay")
+def pay_loan(loan_id: int, db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
+    loan = db.query(models.Loan).filter(models.Loan.id == loan_id).first()
+    if not loan:
+        raise HTTPException(status_code=404, detail="Loan not found")
+        
+    if loan.settled:
+        raise HTTPException(status_code=400, detail="Loan is already settled")
+        
+    payment_amt = loan.repayment_amount
+    if loan.payment_type == "installments" and loan.installments_count > 0:
+        payment_amt = loan.repayment_amount // loan.installments_count
+        
+    # Ensure payment amt doesn't exceed what's left
+    remaining = loan.repayment_amount - loan.amount_paid
+    if payment_amt > remaining:
+        payment_amt = remaining
+        
+    w = None
+    if loan.wallet_id:
+        w = db.query(models.Wallet).filter(models.Wallet.id == loan.wallet_id).first()
+        if w:
+            FinanceService.recalculate_wallet_balances(db)
+            db.refresh(w)
+            if w.balance < payment_amt:
+                raise HTTPException(status_code=400, detail="Insufficient funds in linked wallet to make payment")
+                
+            FinanceRepository.create_transaction(db, {
+                "type": "expense",
+                "amount_naira": payment_amt,
+                "description": f"Loan Payment: {loan.title}",
+                "category": "loan-payment",
+                "wallet_id": loan.wallet_id
+            })
+            FinanceService.recalculate_wallet_balances(db)
+            
+    loan.amount_paid += payment_amt
+    if loan.amount_paid >= loan.repayment_amount:
+        loan.settled = True
+        
+    db.commit()
+    db.refresh(loan)
+    return loan
+
+@router.delete("/loans/{loan_id}")
+def delete_loan(loan_id: int, db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
+    loan = db.query(models.Loan).filter(models.Loan.id == loan_id).first()
+    if loan:
+        db.delete(loan)
+        db.commit()
+    return {"message": "Loan deleted"}
 
 # --- Price DB ---
 @router.get("/price-db", response_model=List[schemas.PriceDbItem])

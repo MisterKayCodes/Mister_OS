@@ -16,6 +16,19 @@ export const getTransactions = async (token) => {
   return await res.json();
 };
 
+export const createTransactionApi = async (data, token) => {
+  const res = await fetch(`${API_BASE}/transactions`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Master-Token": token },
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw { status: res.status, data: errorData };
+  }
+  return await res.json();
+};
+
 export const deleteTransactionApi = async (txId, token) => {
   const res = await fetch(`${API_BASE}/transactions/${txId}`, {
     method: "DELETE",
@@ -229,5 +242,41 @@ export const paySubscriptionApi = async (id, token) => {
     headers: { "X-Master-Token": token }
   });
   if (!res.ok) throw new Error("Failed to mark subscription as paid");
+  return await res.json();
+};
+
+// --- Loans ---
+
+export const getLoansApi = async (token) => {
+  const res = await fetch(`${API_BASE}/loans`, { headers: { "X-Master-Token": token } });
+  if (!res.ok) throw new Error("Failed to fetch loans");
+  return await res.json();
+};
+
+export const createLoanApi = async (data, token) => {
+  const res = await fetch(`${API_BASE}/loans`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Master-Token": token },
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) throw new Error("Failed to create loan");
+  return await res.json();
+};
+
+export const payLoanApi = async (id, token) => {
+  const res = await fetch(`${API_BASE}/loans/${id}/pay`, {
+    method: "PUT",
+    headers: { "X-Master-Token": token }
+  });
+  if (!res.ok) throw new Error("Failed to make loan payment");
+  return await res.json();
+};
+
+export const deleteLoanApi = async (id, token) => {
+  const res = await fetch(`${API_BASE}/loans/${id}`, {
+    method: "DELETE",
+    headers: { "X-Master-Token": token }
+  });
+  if (!res.ok) throw new Error("Failed to delete loan");
   return await res.json();
 };

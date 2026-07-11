@@ -7,6 +7,12 @@ export const fetchNotesApi = async (token) => {
   return await res.json();
 };
 
+export const fetchNotesCountApi = async (token) => {
+  const res = await fetch(`${API_BASE}/count`, { headers: { "X-Master-Token": token } });
+  if (!res.ok) throw new Error("Failed to fetch count");
+  return await res.json();
+};
+
 export const createNoteApi = async (token, folderId = null) => {
   const res = await fetch(`${API_BASE}/`, {
     method: "POST",

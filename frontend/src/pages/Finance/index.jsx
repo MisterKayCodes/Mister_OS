@@ -1,17 +1,18 @@
 // Rule: Max 200 lines per file — split if exceeded
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ArrowUpRight, ArrowDownRight, Sun, Moon } from 'lucide-react';
-import { getFinanceOverview, getTransactions, getWallets, getGoals, getSubscriptionsApi } from '../../utils/financeApi';
+import { getFinanceOverview, getTransactions, getWallets, getGoals, getSubscriptionsApi, getLoansApi } from '../../utils/financeApi';
 import TransactionsTab from './components/TransactionsTab';
 import WalletsTab from './components/WalletsTab';
 import GoalsTab from './components/GoalsTab';
 import SubscriptionsTab from './components/SubscriptionsTab';
+import LoansTab from './components/LoansTab';
 import InsightsTab from './components/InsightsTab';
 import PriceDbTab from './components/PriceDbTab';
 import { useToast } from '../../context/ToastContext';
 import { useTheme } from '../../context/ThemeContext';
 
-const TABS = ['overview', 'transactions', 'wallets', 'goals', 'subscriptions', 'price-db', 'insights'];
+const TABS = ['overview', 'transactions', 'wallets', 'loans-iou', 'goals', 'subscriptions', 'price-db', 'insights'];
 
 export default function FinanceApp({ token, onBack }) {
   const [activeTab, setActiveTab] = useState(() => sessionStorage.getItem('finance_activeTab') || 'overview');
@@ -21,6 +22,7 @@ export default function FinanceApp({ token, onBack }) {
   const [wallets, setWallets] = useState([]);
   const [goals, setGoals] = useState([]);
   const [subscriptions, setSubscriptions] = useState([]);
+  const [loans, setLoans] = useState([]);
   const [loading, setLoading] = useState(true);
   const { showToast } = useToast();
   const { isDarkMode, toggleTheme } = useTheme();
@@ -30,18 +32,20 @@ export default function FinanceApp({ token, onBack }) {
   const fetchAll = async () => {
     setLoading(true);
     try {
-      const [ov, txs, ws, gs, subs] = await Promise.all([
+      const [ov, txs, ws, gs, subs, ls] = await Promise.all([
         getFinanceOverview(token),
         getTransactions(token),
         getWallets(token),
         getGoals(token),
-        getSubscriptionsApi(token)
+        getSubscriptionsApi(token),
+        getLoansApi(token)
       ]);
       setOverview(ov);
       setTransactions(txs);
       setWallets(ws);
       setGoals(gs);
       setSubscriptions(subs);
+      setLoans(ls);
     } catch (err) {
       showToast('Error loading finance data: ' + err.message, 'error');
     } finally {
@@ -88,11 +92,24 @@ export default function FinanceApp({ token, onBack }) {
           <>
             {activeTab === 'overview' && overview && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Net Worth card */}
-                <div className="bg-gradient-to-br from-purple-600 to-indigo-700 text-white p-6 rounded-2xl shadow-sm md:col-span-2">
-                  <p className="text-purple-200 text-sm font-medium mb-1">Total Net Worth</p>
-                  <h3 className="text-4xl font-extrabold tracking-tight">{formatNGN(overview.net_worth)}</h3>
-                  <p className="text-purple-300 text-xs mt-2">{wallets.length} wallet{wallets.length !== 1 ? 's' : ''} tracked</p>
+                {/* Net Worth */}
+              <div className="bg-gradient-to-br from-black to-gray-800 dark:from-white dark:to-gray-200 text-white dark:text-black p-6 rounded-2xl shadow-xl flex flex-col justify-center">
+                <p className="text-sm font-medium text-gray-300 dark:text-gray-700 uppercase tracking-wider mb-2">Net Worth</p>
+                <h2 className="text-4xl font-black">{formatNGN(overview.net_worth - (loans.filter(l => !l.settled).reduce((acc, l) => acc + (l.repayment_amount - l.amount_paid), 0)))}</h2>
+                <div className="mt-4 flex gap-4 text-xs font-medium">
+                  <span className="text-green-400 dark:text-green-700 flex items-center gap-1"><ArrowDownRight size={14}/> {formatNGN(overview.month_income)} In</span>
+                  <span className="text-red-400 dark:text-red-700 flex items-center gap-1"><ArrowUpRight size={14}/> {formatNGN(overview.month_expenses)} Out</span>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                {/* Active Loans */}
+                <div className="bg-white p-4 md:p-5 rounded-2xl border border-gray-200 shadow-sm flex items-center gap-4 col-span-2">
+                  <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 shrink-0"><ArrowUpRight size={20} /></div>
+                  <div>
+                    <p className="text-[10px] md:text-xs text-gray-500 font-medium uppercase tracking-wider">Active Liabilities (Loans)</p>
+                    <p className="text-lg md:text-xl font-bold text-orange-600">{formatNGN(loans.filter(l => !l.settled).reduce((acc, l) => acc + (l.repayment_amount - l.amount_paid), 0))}</p>
+                  </div>
                 </div>
                 {/* Daily Income */}
                 <div className="bg-white p-4 md:p-5 rounded-2xl border border-gray-200 shadow-sm flex items-center gap-4">
@@ -145,8 +162,9 @@ export default function FinanceApp({ token, onBack }) {
               </div>
             )}
 
-            {activeTab === 'transactions' && <TransactionsTab transactions={transactions} formatNGN={formatNGN} token={token} fetchAll={fetchAll} />}
-            {activeTab === 'wallets' && <WalletsTab wallets={wallets} setWallets={setWallets} formatNGN={formatNGN} token={token} />}
+            {activeTab === 'transactions' && <TransactionsTab transactions={transactions} wallets={wallets} formatNGN={formatNGN} token={token} fetchAll={fetchAll} />}
+            {activeTab === 'wallets' && <WalletsTab wallets={wallets} setWallets={setWallets} formatNGN={formatNGN} token={token} fetchAll={fetchAll} />}
+            {activeTab === 'loans-iou' && <LoansTab loans={loans} wallets={wallets} formatNGN={formatNGN} token={token} fetchAll={fetchAll} />}
             {activeTab === 'goals' && <GoalsTab goals={goals} setGoals={setGoals} wallets={wallets} formatNGN={formatNGN} token={token} />}
             {activeTab === 'subscriptions' && <SubscriptionsTab subscriptions={subscriptions} setSubscriptions={setSubscriptions} token={token} formatNGN={formatNGN} />}
             {activeTab === 'price-db' && <PriceDbTab token={token} formatNGN={formatNGN} />}

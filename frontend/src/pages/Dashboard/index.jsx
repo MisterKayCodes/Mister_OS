@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BookOpen, DollarSign, Target, Sparkles, CheckSquare, Settings, LogOut, Clock, ArrowRight, Sun, Moon } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
-import { getTasksApi, fetchNotesApi } from '../../utils/api';
+import { getTasksApi, fetchNotesCountApi } from '../../utils/api';
 import { getTransactions } from '../../utils/financeApi';
 
 export default function Dashboard({ onNavigate, onLogout, token }) {
@@ -25,11 +25,11 @@ export default function Dashboard({ onNavigate, onLogout, token }) {
       })
       .catch(err => console.error("Error fetching tasks for dashboard:", err));
 
-    // Fetch total notes
-    fetchNotesApi(token)
-      .then(notes => {
-        if (Array.isArray(notes)) {
-          setTotalNotesCount(notes.length);
+    // Fetch total notes count
+    fetchNotesCountApi(token)
+      .then(data => {
+        if (data && typeof data.count === 'number') {
+          setTotalNotesCount(data.count);
         }
       })
       .catch(err => console.error("Error fetching notes for dashboard:", err));
