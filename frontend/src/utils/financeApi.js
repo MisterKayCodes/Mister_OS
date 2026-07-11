@@ -263,12 +263,25 @@ export const createLoanApi = async (data, token) => {
   return await res.json();
 };
 
-export const payLoanApi = async (id, token) => {
-  const res = await fetch(`${API_BASE}/loans/${id}/pay`, {
+export const payLoanApi = async (id, installmentId = null, token) => {
+  const url = installmentId
+    ? `${API_BASE}/loans/${id}/pay?installment_id=${installmentId}`
+    : `${API_BASE}/loans/${id}/pay`;
+  const res = await fetch(url, {
     method: "PUT",
     headers: { "X-Master-Token": token }
   });
   if (!res.ok) throw new Error("Failed to make loan payment");
+  return await res.json();
+};
+
+export const updateLoanApi = async (id, data, token) => {
+  const res = await fetch(`${API_BASE}/loans/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", "X-Master-Token": token },
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) throw new Error("Failed to update loan");
   return await res.json();
 };
 

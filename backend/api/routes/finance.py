@@ -335,7 +335,8 @@ def settle_debt(debt_id: int, db: Session = Depends(database.get_db), token: str
 # --- Loans ---
 @router.get("/loans", response_model=List[schemas.LoanResponse])
 def get_loans(db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
-    return db.query(models.Loan).all()
+    from sqlalchemy.orm import joinedload
+    return db.query(models.Loan).options(joinedload(models.Loan.installments)).all()
 
 @router.post("/loans", response_model=schemas.LoanResponse)
 def create_loan(req: LoanCreate, db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
@@ -438,6 +439,35 @@ def pay_loan(loan_id: int, installment_id: Optional[int] = None, db: Session = D
         
     db.commit()
     db.refresh(loan)
+    from sqlalchemy.orm import joinedload
+    loan = db.query(models.Loan).options(joinedload(models.Loan.installments)).filter(models.Loan.id == loan.id).first()
+    return loan
+
+@router.put("/loans/{loan_id}", response_model=schemas.LoanResponse)
+def update_loan(loan_id: int, req: LoanCreate, db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
+    from sqlalchemy.orm import joinedload
+    loan = db.query(models.Loan).filter(models.Loan.id == loan_id).first()
+    if not loan:
+        raise HTTPException(status_code=404, detail="Loan not found")
+    
+    loan.title = req.title
+    loan.principal_amount = req.principal_amount
+    loan.repayment_amount = req.repayment_amount
+    loan.payment_type = req.payment_type
+    loan.wallet_id = req.wallet_id
+    
+    # Replace all installments
+    db.query(models.LoanInstallment).filter(models.LoanInstallment.loan_id == loan_id).delete()
+    for inst in req.installments:
+        installment = models.LoanInstallment(
+            loan_id=loan.id,
+            amount_due=inst.amount_due,
+            due_date=inst.due_date
+        )
+        db.add(installment)
+    
+    db.commit()
+    loan = db.query(models.Loan).options(joinedload(models.Loan.installments)).filter(models.Loan.id == loan_id).first()
     return loan
 
 @router.delete("/loans/{loan_id}")
