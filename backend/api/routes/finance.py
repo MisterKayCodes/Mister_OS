@@ -53,6 +53,18 @@ class TransactionCreate(BaseModel):
     category: str = "uncategorized"
     wallet_id: int
     date: Optional[datetime] = None
+    tags: Optional[str] = None
+    time: Optional[str] = None
+
+class TransactionUpdate(BaseModel):
+    type: Optional[str] = None
+    amount_naira: Optional[int] = None
+    description: Optional[str] = None
+    category: Optional[str] = None
+    wallet_id: Optional[int] = None
+    date: Optional[datetime] = None
+    tags: Optional[str] = None
+    time: Optional[str] = None
 
 class LoanInstallmentCreate(BaseModel):
     amount_due: int
@@ -192,6 +204,21 @@ def delete_transaction(tx_id: int, db: Session = Depends(database.get_db), token
     db.delete(tx)
     db.commit()
     return {"message": "Transaction deleted"}
+
+@router.put("/transactions/{tx_id}", response_model=schemas.TransactionResponse)
+def update_transaction(tx_id: int, req: TransactionUpdate, db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
+    tx = db.query(models.Transaction).filter(models.Transaction.id == tx_id).first()
+    if not tx:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+        
+    update_data = req.dict(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(tx, key, value)
+        
+    db.commit()
+    db.refresh(tx)
+    FinanceService.recalculate_wallet_balances(db)
+    return tx
 
 # --- Wallets ---
 @router.get("/wallets", response_model=List[schemas.WalletResponse])

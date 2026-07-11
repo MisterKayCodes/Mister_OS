@@ -47,6 +47,8 @@ class Transaction(Base):
     exchange_rate = Column(Float, default=1.0)
     description = Column(String)
     category = Column(String)
+    tags = Column(String, nullable=True)  # comma-separated hashtags e.g. "food,transport"
+    time = Column(String, nullable=True)  # e.g. "3:45 PM"
     wallet_id = Column(Integer, nullable=True)
     note_id = Column(Integer, nullable=True)
     date = Column(DateTime(timezone=True), server_default=func.now())

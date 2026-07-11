@@ -11,6 +11,8 @@ class TransactionResponse(BaseResponse):
     original_currency: str
     description: str
     category: str
+    tags: Optional[str] = None
+    time: Optional[str] = None
     date: datetime
 
 class WalletResponse(BaseResponse):
