@@ -8,7 +8,7 @@ from .finance import (
     TransactionResponse, WalletResponse, GoalResponse, DebtResponse,
     FinanceInsightsRequest, FinanceInsightsResponse, CanIAffordRequest, CanIAffordResponse,
     VendorBase, VendorResponse, ProductBase, ProductResponse, PriceLogCreate, PriceLogResponse, PriceDbItem,
-    SubscriptionBase, SubscriptionResponse
+    SubscriptionBase, SubscriptionResponse, LoanResponse
 )
 from .leads import (
     LeadBase, LeadCreate, LeadUpdate, LeadResponse,
