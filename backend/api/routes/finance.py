@@ -330,11 +330,11 @@ def settle_debt(debt_id: int, db: Session = Depends(database.get_db), token: str
     return {"message": "Debt settled"}
 
 # --- Loans ---
-@router.get("/loans")
+@router.get("/loans", response_model=List[schemas.LoanResponse])
 def get_loans(db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
     return db.query(models.Loan).all()
 
-@router.post("/loans")
+@router.post("/loans", response_model=schemas.LoanResponse)
 def create_loan(req: LoanCreate, db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
     loan = models.Loan(
         title=req.title,
@@ -361,7 +361,7 @@ def create_loan(req: LoanCreate, db: Session = Depends(database.get_db), token: 
         
     return loan
 
-@router.put("/loans/{loan_id}/pay")
+@router.put("/loans/{loan_id}/pay", response_model=schemas.LoanResponse)
 def pay_loan(loan_id: int, db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
     loan = db.query(models.Loan).filter(models.Loan.id == loan_id).first()
     if not loan:

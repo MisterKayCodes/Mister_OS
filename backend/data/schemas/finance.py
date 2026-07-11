@@ -37,6 +37,19 @@ class DebtResponse(BaseResponse):
     settled: bool
     date: datetime
 
+class LoanResponse(BaseResponse):
+    id: int
+    title: str
+    principal_amount: int
+    repayment_amount: int
+    payment_type: str
+    installments_count: int
+    amount_paid: int
+    due_date: Optional[datetime] = None
+    settled: bool
+    wallet_id: Optional[int] = None
+    created_at: datetime
+
 class SubscriptionBase(BaseModel):
     name: str
     amount: int
