@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 from .base import BaseResponse
 
@@ -37,18 +37,23 @@ class DebtResponse(BaseResponse):
     settled: bool
     date: datetime
 
+class LoanInstallmentResponse(BaseResponse):
+    id: int
+    amount_due: int
+    due_date: datetime
+    status: str
+
 class LoanResponse(BaseResponse):
     id: int
     title: str
     principal_amount: int
     repayment_amount: int
     payment_type: str
-    installments_count: int
     amount_paid: int
-    due_date: Optional[datetime] = None
     settled: bool
     wallet_id: Optional[int] = None
     created_at: datetime
+    installments: List[LoanInstallmentResponse] = []
 
 class SubscriptionBase(BaseModel):
     name: str

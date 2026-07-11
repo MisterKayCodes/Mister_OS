@@ -18,12 +18,24 @@ class Loan(Base):
     principal_amount = Column(Integer)
     repayment_amount = Column(Integer)
     payment_type = Column(String) # 'one-time', 'installments'
-    installments_count = Column(Integer, default=1)
     amount_paid = Column(Integer, default=0)
-    due_date = Column(DateTime(timezone=True))
     settled = Column(Boolean, default=False)
     wallet_id = Column(Integer, nullable=True) # Wallet the principal went into / payments come from initially
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    from sqlalchemy.orm import relationship
+    installments = relationship("LoanInstallment", back_populates="loan", cascade="all, delete-orphan")
+
+class LoanInstallment(Base):
+    __tablename__ = "loan_installments"
+    id = Column(Integer, primary_key=True, index=True)
+    loan_id = Column(Integer, ForeignKey("loans.id"))
+    amount_due = Column(Integer)
+    due_date = Column(DateTime(timezone=True))
+    status = Column(String, default="pending") # pending, paid
+    
+    from sqlalchemy.orm import relationship
+    loan = relationship("Loan", back_populates="installments")
 
 class Transaction(Base):
     __tablename__ = "transactions"

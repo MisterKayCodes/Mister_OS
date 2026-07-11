@@ -54,14 +54,17 @@ class TransactionCreate(BaseModel):
     wallet_id: int
     date: Optional[datetime] = None
 
+class LoanInstallmentCreate(BaseModel):
+    amount_due: int
+    due_date: datetime
+
 class LoanCreate(BaseModel):
     title: str
     principal_amount: int
     repayment_amount: int
     payment_type: str
-    installments_count: Optional[int] = 1
-    due_date: Optional[datetime] = None
     wallet_id: Optional[int] = None
+    installments: List[LoanInstallmentCreate] = []
 
 # --- Overview ---
 @router.get("/overview")
@@ -341,11 +344,20 @@ def create_loan(req: LoanCreate, db: Session = Depends(database.get_db), token: 
         principal_amount=req.principal_amount,
         repayment_amount=req.repayment_amount,
         payment_type=req.payment_type,
-        installments_count=req.installments_count,
-        due_date=req.due_date,
         wallet_id=req.wallet_id
     )
     db.add(loan)
+    db.commit()
+    db.refresh(loan)
+    
+    # Save installments
+    for inst in req.installments:
+        installment = models.LoanInstallment(
+            loan_id=loan.id,
+            amount_due=inst.amount_due,
+            due_date=inst.due_date
+        )
+        db.add(installment)
     db.commit()
     db.refresh(loan)
     
@@ -362,7 +374,7 @@ def create_loan(req: LoanCreate, db: Session = Depends(database.get_db), token: 
     return loan
 
 @router.put("/loans/{loan_id}/pay", response_model=schemas.LoanResponse)
-def pay_loan(loan_id: int, db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
+def pay_loan(loan_id: int, installment_id: Optional[int] = None, db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
     loan = db.query(models.Loan).filter(models.Loan.id == loan_id).first()
     if not loan:
         raise HTTPException(status_code=404, detail="Loan not found")
@@ -370,11 +382,29 @@ def pay_loan(loan_id: int, db: Session = Depends(database.get_db), token: str = 
     if loan.settled:
         raise HTTPException(status_code=400, detail="Loan is already settled")
         
-    payment_amt = loan.repayment_amount
-    if loan.payment_type == "installments" and loan.installments_count > 0:
-        payment_amt = loan.repayment_amount // loan.installments_count
+    installment = None
+    if installment_id:
+        installment = db.query(models.LoanInstallment).filter(
+            models.LoanInstallment.id == installment_id,
+            models.LoanInstallment.loan_id == loan_id
+        ).first()
+        if not installment:
+            raise HTTPException(status_code=404, detail="Installment not found")
+        if installment.status == "paid":
+            raise HTTPException(status_code=400, detail="Installment already paid")
+    else:
+        # Auto-pick the next pending installment
+        installment = db.query(models.LoanInstallment).filter(
+            models.LoanInstallment.loan_id == loan_id,
+            models.LoanInstallment.status == "pending"
+        ).order_by(models.LoanInstallment.due_date.asc()).first()
         
-    # Ensure payment amt doesn't exceed what's left
+    if not installment:
+        raise HTTPException(status_code=400, detail="No pending installments found")
+        
+    payment_amt = installment.amount_due
+        
+    # Ensure payment amt doesn't exceed what's left overall
     remaining = loan.repayment_amount - loan.amount_paid
     if payment_amt > remaining:
         payment_amt = remaining
@@ -386,18 +416,23 @@ def pay_loan(loan_id: int, db: Session = Depends(database.get_db), token: str = 
             FinanceService.recalculate_wallet_balances(db)
             db.refresh(w)
             if w.balance < payment_amt:
-                raise HTTPException(status_code=400, detail="Insufficient funds in linked wallet to make payment")
-                
-            FinanceRepository.create_transaction(db, {
-                "type": "expense",
-                "amount_naira": payment_amt,
-                "description": f"Loan Payment: {loan.title}",
-                "category": "loan-payment",
-                "wallet_id": loan.wallet_id
-            })
-            FinanceService.recalculate_wallet_balances(db)
+                raise HTTPException(status_code=400, detail={"error": "insufficient_funds", "wallet_id": w.id, "shortfall": payment_amt - w.balance})
             
+    # Process payment
+    if w:
+        FinanceRepository.create_transaction(db, {
+            "type": "expense",
+            "amount_naira": payment_amt,
+            "description": f"Loan Repayment: {loan.title}",
+            "category": "loan_repayment",
+            "wallet_id": w.id
+        })
+        FinanceService.recalculate_wallet_balances(db)
+        
     loan.amount_paid += payment_amt
+    installment.status = "paid"
+    
+    # Check if settled
     if loan.amount_paid >= loan.repayment_amount:
         loan.settled = True
         
