@@ -1,18 +1,83 @@
 // Rule: Max 200 lines per file — split if exceeded
-import React, { useState } from 'react';
-import { ArrowUpRight, ArrowDownRight, Save, Trash2, Loader2, Plus } from 'lucide-react';
-import { deleteTransactionApi, createTransactionApi } from '../../../utils/financeApi';
+import React, { useState, useEffect } from 'react';
+import { ArrowUpRight, ArrowDownRight, Save, Trash2, Loader2, Plus, Zap } from 'lucide-react';
+import { deleteTransactionApi, createTransactionApi, getTransactionTemplates, createTransactionTemplateApi, deleteTransactionTemplateApi } from '../../../utils/financeApi';
 import { useToast } from '../../../context/ToastContext';
 import AddTransactionModal from './AddTransactionModal';
+import AddTransactionTemplateModal from './AddTransactionTemplateModal';
 import InsufficientFundsModal from './InsufficientFundsModal';
 
 export default function TransactionsTab({ transactions, wallets, formatNGN, token, fetchAll }) {
   const { showToast } = useToast();
   const [deletingId, setDeletingId] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState(null);
   const [insufficientFundsError, setInsufficientFundsError] = useState(null);
   const [pendingTransaction, setPendingTransaction] = useState(null);
+  const [templates, setTemplates] = useState([]);
+  const [loadingTemplates, setLoadingTemplates] = useState(false);
+  const [deletingTemplateId, setDeletingTemplateId] = useState(null);
+
+  const loadTemplates = async () => {
+    try {
+      setLoadingTemplates(true);
+      const data = await getTransactionTemplates(token);
+      setTemplates(data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingTemplates(false);
+    }
+  };
+
+  useEffect(() => {
+    loadTemplates();
+  }, []);
+
+  const handleAddTemplate = async (data) => {
+    try {
+      await createTransactionTemplateApi(data, token);
+      showToast("Template saved!", "success");
+      setShowTemplateModal(false);
+      loadTemplates();
+    } catch (err) {
+      showToast(err.message, "error");
+    }
+  };
+
+  const handleDeleteTemplate = async (id, e) => {
+    e.stopPropagation();
+    try {
+      setDeletingTemplateId(id);
+      await deleteTransactionTemplateApi(id, token);
+      showToast("Template deleted", "success");
+      loadTemplates();
+    } catch (err) {
+      showToast(err.message, "error");
+    } finally {
+      setDeletingTemplateId(null);
+    }
+  };
+
+  const applyTemplate = async (tmpl) => {
+    try {
+      const data = {
+        type: tmpl.type,
+        amount_naira: tmpl.amount_naira,
+        description: tmpl.description,
+        category: tmpl.category,
+        tags: tmpl.tags || "",
+        wallet_id: tmpl.wallet_id || (wallets.length > 0 ? wallets[0].id : null),
+        date: new Date().toISOString()
+      };
+      if (!data.wallet_id) throw new Error("No wallet available to log this transaction");
+      
+      await handleAddTransaction(data);
+    } catch (err) {
+      showToast(err.message, "error");
+    }
+  };
 
   const handleDelete = async (id) => {
     try {
@@ -90,14 +155,64 @@ export default function TransactionsTab({ transactions, wallets, formatNGN, toke
 
   return (
     <div className="space-y-6 relative">
-      <div className="flex justify-end mb-4">
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="flex items-center gap-2 bg-black dark:bg-white text-white dark:text-black px-4 py-2 rounded-full text-sm font-bold shadow-md hover:bg-gray-800 dark:hover:bg-gray-200 transition"
-        >
-          <Plus size={16} /> Add Transaction
-        </button>
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white">Transactions</h2>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowTemplateModal(true)}
+            className="flex items-center gap-2 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-700 px-4 py-2 rounded-full text-sm font-bold hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+          >
+            <Zap size={16} /> New Quick Action
+          </button>
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="flex items-center gap-2 bg-black dark:bg-white text-white dark:text-black px-4 py-2 rounded-full text-sm font-bold shadow-md hover:bg-gray-800 dark:hover:bg-gray-200 transition"
+          >
+            <Plus size={16} /> Add 
+          </button>
+        </div>
       </div>
+
+      {templates.length > 0 && (
+        <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+          {templates.map(tmpl => {
+            const isExpense = tmpl.type === 'expense';
+            const isIncome = tmpl.type === 'income';
+            
+            return (
+              <button
+                key={tmpl.id}
+                onClick={() => applyTemplate(tmpl)}
+                className={`relative flex-shrink-0 flex items-center gap-3 p-3 rounded-xl border transition-all text-left group hover:scale-105 active:scale-95 ${
+                  isExpense ? 'bg-red-50/50 dark:bg-red-500/10 border-red-100 dark:border-red-500/20 hover:bg-red-100 dark:hover:bg-red-500/20' 
+                  : isIncome ? 'bg-green-50/50 dark:bg-green-500/10 border-green-100 dark:border-green-500/20 hover:bg-green-100 dark:hover:bg-green-500/20'
+                  : 'bg-blue-50/50 dark:bg-blue-500/10 border-blue-100 dark:border-blue-500/20 hover:bg-blue-100 dark:hover:bg-blue-500/20'
+                }`}
+              >
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+                  isIncome ? 'bg-green-100 dark:bg-green-500/30 text-green-600 dark:text-green-400' 
+                  : isExpense ? 'bg-red-100 dark:bg-red-500/30 text-red-600 dark:text-red-400' 
+                  : 'bg-blue-100 dark:bg-blue-500/30 text-blue-600 dark:text-blue-400'
+                }`}>
+                  <Zap size={14} />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-gray-900 dark:text-white leading-tight">{tmpl.title}</p>
+                  <p className={`text-xs font-medium ${isExpense ? 'text-red-600 dark:text-red-400' : isIncome ? 'text-green-600 dark:text-green-400' : 'text-blue-600 dark:text-blue-400'}`}>
+                    {isIncome ? '+' : '-'}{formatNGN(tmpl.amount_naira)}
+                  </p>
+                </div>
+                <div 
+                  onClick={(e) => handleDeleteTemplate(tmpl.id, e)}
+                  className="absolute -top-1 -right-1 bg-white dark:bg-gray-800 rounded-full p-1 shadow-sm border border-gray-200 dark:border-gray-700 opacity-0 group-hover:opacity-100 transition-opacity hover:text-red-500 cursor-pointer"
+                >
+                  {deletingTemplateId === tmpl.id ? <Loader2 size={12} className="animate-spin" /> : <X size={12} />}
+                </div>
+              </button>
+            )
+          })}
+        </div>
+      )}
 
       {transactions.length === 0 ? (
         <div className="text-gray-400 text-sm p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700">No transactions logged yet.</div>
@@ -131,9 +246,11 @@ export default function TransactionsTab({ transactions, wallets, formatNGN, toke
                       <div>
                         <p className="font-medium text-gray-800 dark:text-gray-200 text-sm">{tx.description}</p>
                         <div className="flex items-center gap-2 mt-0.5">
-                          <span className="text-[11px] font-medium bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 px-2 py-0.5 rounded-md">
-                            #{tx.category}
-                          </span>
+                          {tx.category && tx.category !== 'uncategorized' && (
+                            <span className="text-[11px] font-medium bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 px-2 py-0.5 rounded-md">
+                              #{tx.category}
+                            </span>
+                          )}
                           {tx.tags && tx.tags.split(',').map(tag => (
                             <span key={tag} className="text-[10px] font-medium bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded text-opacity-80">
                               #{tag.trim()}
@@ -186,6 +303,14 @@ export default function TransactionsTab({ transactions, wallets, formatNGN, toke
           wallets={wallets}
           onClose={() => setShowAddModal(false)}
           onSubmit={handleAddTransaction}
+        />
+      )}
+
+      {showTemplateModal && (
+        <AddTransactionTemplateModal
+          wallets={wallets}
+          onClose={() => setShowTemplateModal(false)}
+          onSubmit={handleAddTemplate}
         />
       )}
 

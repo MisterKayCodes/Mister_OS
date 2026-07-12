@@ -54,6 +54,18 @@ class Transaction(Base):
     date = Column(DateTime(timezone=True), server_default=func.now())
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
+class TransactionTemplate(Base):
+    __tablename__ = "transaction_templates"
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String)
+    type = Column(String)  # 'expense', 'income', 'save'
+    amount_naira = Column(Integer)
+    description = Column(String)
+    category = Column(String)
+    tags = Column(String, nullable=True)
+    wallet_id = Column(Integer, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
 class Goal(Base):
     __tablename__ = "goals"
     id = Column(Integer, primary_key=True, index=True)

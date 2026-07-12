@@ -42,6 +42,31 @@ export const updateTransactionApi = async (id, data, token) => {
   return await res.json();
 };
 
+export const getTransactionTemplates = async (token) => {
+  const res = await fetch(`${API_BASE}/transactions/templates`, { headers: { "X-Master-Token": token } });
+  if (!res.ok) throw new Error("Failed to fetch templates");
+  return await res.json();
+};
+
+export const createTransactionTemplateApi = async (data, token) => {
+  const res = await fetch(`${API_BASE}/transactions/templates`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Master-Token": token },
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) throw new Error("Failed to create template");
+  return await res.json();
+};
+
+export const deleteTransactionTemplateApi = async (id, token) => {
+  const res = await fetch(`${API_BASE}/transactions/templates/${id}`, {
+    method: "DELETE",
+    headers: { "X-Master-Token": token }
+  });
+  if (!res.ok) throw new Error("Failed to delete template");
+  return await res.json();
+};
+
 export const deleteTransactionApi = async (txId, token) => {
   const res = await fetch(`${API_BASE}/transactions/${txId}`, {
     method: "DELETE",

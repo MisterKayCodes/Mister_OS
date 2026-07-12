@@ -15,6 +15,26 @@ class TransactionResponse(BaseResponse):
     time: Optional[str] = None
     date: datetime
 
+class TransactionTemplateCreate(BaseModel):
+    title: str
+    type: str
+    amount_naira: int
+    description: str
+    category: str = "uncategorized"
+    tags: Optional[str] = None
+    wallet_id: Optional[int] = None
+
+class TransactionTemplateResponse(BaseResponse):
+    id: int
+    title: str
+    type: str
+    amount_naira: int
+    description: str
+    category: str
+    tags: Optional[str] = None
+    wallet_id: Optional[int] = None
+    created_at: datetime
+
 class WalletResponse(BaseResponse):
     id: int
     name: str

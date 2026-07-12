@@ -220,6 +220,28 @@ def update_transaction(tx_id: int, req: TransactionUpdate, db: Session = Depends
     FinanceService.recalculate_wallet_balances(db)
     return tx
 
+# --- Templates ---
+@router.get("/transactions/templates", response_model=List[schemas.TransactionTemplateResponse])
+def get_transaction_templates(db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
+    return db.query(models.TransactionTemplate).all()
+
+@router.post("/transactions/templates", response_model=schemas.TransactionTemplateResponse)
+def create_transaction_template(req: TransactionTemplateCreate, db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
+    tmpl = models.TransactionTemplate(**req.dict())
+    db.add(tmpl)
+    db.commit()
+    db.refresh(tmpl)
+    return tmpl
+
+@router.delete("/transactions/templates/{tmpl_id}")
+def delete_transaction_template(tmpl_id: int, db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
+    tmpl = db.query(models.TransactionTemplate).filter(models.TransactionTemplate.id == tmpl_id).first()
+    if not tmpl:
+        raise HTTPException(status_code=404, detail="Template not found")
+    db.delete(tmpl)
+    db.commit()
+    return {"message": "Template deleted"}
+
 # --- Wallets ---
 @router.get("/wallets", response_model=List[schemas.WalletResponse])
 def get_wallets(db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
