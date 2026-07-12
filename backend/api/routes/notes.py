@@ -84,7 +84,7 @@ def delete_notes_bulk(req: schemas.BulkDeleteRequest, db: Session = Depends(data
     for note_id in req.note_ids:
         db_note = db.query(models.Note).filter(models.Note.id == note_id).first()
         if db_note:
-            db.query(models.Expense).filter(models.Expense.note_id == note_id).delete()
+            db.query(models.Transaction).filter(models.Transaction.note_id == note_id).delete()
             try:
                 # Remove from vector DB (silently ignore if note was never indexed)
                 vector.notes_collection.delete(where={"note_id": note_id})
@@ -105,7 +105,7 @@ def delete_note(note_id: int, db: Session = Depends(database.get_db), token: str
     db_note = db.query(models.Note).filter(models.Note.id == note_id).first()
     if not db_note:
         raise HTTPException(status_code=404, detail="Note not found")
-    db.query(models.Expense).filter(models.Expense.note_id == note_id).delete()
+    db.query(models.Transaction).filter(models.Transaction.note_id == note_id).delete()
     try:
         vector.notes_collection.delete(where={"note_id": note_id})
     except Exception:
