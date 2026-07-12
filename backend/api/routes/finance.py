@@ -226,7 +226,7 @@ def get_transaction_templates(db: Session = Depends(database.get_db), token: str
     return db.query(models.TransactionTemplate).all()
 
 @router.post("/transactions/templates", response_model=schemas.TransactionTemplateResponse)
-def create_transaction_template(req: TransactionTemplateCreate, db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
+def create_transaction_template(req: schemas.TransactionTemplateCreate, db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
     tmpl = models.TransactionTemplate(**req.dict())
     db.add(tmpl)
     db.commit()
