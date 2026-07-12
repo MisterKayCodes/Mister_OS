@@ -1,6 +1,6 @@
 // Rule: Max 200 lines per file — split if exceeded
 import React, { useState, useEffect } from 'react';
-import { ArrowUpRight, ArrowDownRight, Save, Trash2, Loader2, Plus, Zap } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, Save, Trash2, Loader2, Plus, Zap, X, Pencil } from 'lucide-react';
 import { deleteTransactionApi, createTransactionApi, getTransactionTemplates, createTransactionTemplateApi, deleteTransactionTemplateApi } from '../../../utils/financeApi';
 import { useToast } from '../../../context/ToastContext';
 import AddTransactionModal from './AddTransactionModal';
@@ -279,7 +279,7 @@ export default function TransactionsTab({ transactions, wallets, formatNGN, toke
                         className="p-1.5 text-gray-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 hover:text-blue-600 dark:hover:text-blue-400 rounded-lg transition"
                         title="Edit transaction"
                       >
-                        <ArrowUpRight size={16} className="rotate-45" /> {/* Using as edit icon placeholder, or import Pencil */}
+                        <Pencil size={15} />
                       </button>
                       <button 
                         onClick={() => handleDelete(tx.id)} 
