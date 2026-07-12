@@ -1,4 +1,6 @@
-import { API_BASE } from './config';
+const fallbackBase = `http://${window.location.hostname || "localhost"}:8011`;
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || fallbackBase;
+const API_BASE = `${BASE_URL}/api`;
 
 export const getLifeProgress = async (token) => {
   const res = await fetch(`${API_BASE}/life/progress`, { headers: { "X-Master-Token": token } });
