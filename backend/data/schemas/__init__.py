@@ -30,3 +30,8 @@ from .ai import (
     ChatMessageBase, ChatMessageResponse, ChatSessionResponse, OmniChatRequest,
     ChatAnalysisRequest, ChatAnalysisResponse, TitleGenerateRequest, TitleGenerateResponse
 )
+from .life import (
+    LifeUserProgressResponse, LifeTaskDefCreate, LifeTaskDefUpdate, LifeTaskDefResponse,
+    LifeTaskSessionCreate, LifeTaskSessionResponse, LifeRewardCreate, LifeRewardResponse,
+    LifeRewardUnlockCreate, LifeRewardUnlockResponse
+)

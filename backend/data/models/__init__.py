@@ -9,3 +9,4 @@ from .outreach import OutreachLog, OutreachTemplate, CrmSettings, OutreachBrain,
 from .analysis import AnalysisReport
 from .token import TokenUsageLog
 from .task import Task
+from .life import LifeUserProgress, LifeTaskDef, LifeTaskSession, LifeReward, LifeRewardUnlock
