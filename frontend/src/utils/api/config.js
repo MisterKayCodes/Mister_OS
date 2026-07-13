@@ -7,6 +7,8 @@ export const API_BASE = `${BASE_URL}/api/notes`;
 export const AI_BASE = `${BASE_URL}/api/ai`;
 export const LEADS_BASE = `${BASE_URL}/api/leads`;
 export const AUTH_BASE = `${BASE_URL}/api/auth`;
+export const KNOWLEDGE_BASE = `${BASE_URL}/api/knowledge`;
+export const TASKS_BASE = `${BASE_URL}/api/tasks`;
 
 export const checkConnectivity = async () => {
   try {

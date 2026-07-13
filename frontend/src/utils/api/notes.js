@@ -1,6 +1,5 @@
 import { fetchApi } from '../apiClient';
 import { API_BASE } from './config';
-import { enqueue } from '../offlineQueue';
 
 export const fetchNotesApi = (token) => fetchApi(`${API_BASE}/`, { token });
 
@@ -16,22 +15,11 @@ export const createNoteApi = (token, folderId = null) => fetchApi(`${API_BASE}/`
   token 
 });
 
-export const saveNoteApi = async (id, content, token, title, folderId = null) => {
-  try {
-    await fetchApi(`${API_BASE}/${id}`, { 
-      method: 'PUT', 
-      body: { content, title, folder_id: folderId }, 
-      token 
-    });
-  } catch (err) {
-    enqueue({ 
-      type: 'save_note', 
-      url: `${API_BASE}/${id}`, 
-      method: 'PUT', 
-      body: { content, title, folder_id: folderId } 
-    });
-  }
-};
+export const saveNoteApi = (id, content, token, title, folderId = null) => fetchApi(`${API_BASE}/${id}`, { 
+  method: 'PUT', 
+  body: { content, title, folder_id: folderId }, 
+  token 
+});
 
 export const deleteNoteApi = (noteId, token) => fetchApi(`${API_BASE}/${noteId}`, { method: 'DELETE', token });
 

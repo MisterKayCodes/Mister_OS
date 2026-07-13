@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { fetchNotesApi, createNoteApi, saveNoteApi, analyzeChatApi, deleteNotesApi, getFoldersApi, createFolderApi, deleteFolderApi, moveNotesBulkApi } from '../../../utils/api';
+import { fetchNotesApi, createNoteApi, analyzeChatApi, deleteNotesApi, getFoldersApi, createFolderApi, deleteFolderApi, moveNotesBulkApi } from '../../../utils/api';
+import { saveNote } from '../../../services/noteService';
 import { useToast } from '../../../context/ToastContext';
 
 export default function useHomeState() {
@@ -95,7 +96,7 @@ export default function useHomeState() {
     if (!activeNote) return;
     const timer = setTimeout(() => {
       if (content !== activeNote.content || title !== activeNote.title) {
-        saveNoteApi(activeNote.id, content, token, title, activeNote.folder_id).then(fetchNotes);
+        saveNote(activeNote.id, content, token, title, activeNote.folder_id).then(fetchNotes);
       }
     }, 1000);
     return () => clearTimeout(timer);

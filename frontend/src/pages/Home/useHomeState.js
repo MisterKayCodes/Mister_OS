@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { fetchNotesApi, createNoteApi, saveNoteApi, deleteNotesApi, getFoldersApi, createFolderApi, deleteFolderApi, moveNotesBulkApi, fetchTokenStatsApi, cacheNotes, cacheFolders, getCachedNotes, getCachedFolders, checkConnectivity } from '../../utils/api';
+import { fetchNotesApi, createNoteApi, deleteNotesApi, getFoldersApi, createFolderApi, deleteFolderApi, moveNotesBulkApi, fetchTokenStatsApi, cacheNotes, cacheFolders, getCachedNotes, getCachedFolders, checkConnectivity } from '../../utils/api';
+import { saveNote } from '../../services/noteService';
 import { flush, getPendingCount } from '../../utils/offlineQueue';
 import { useToast } from '../../context/ToastContext';
 
@@ -170,7 +171,7 @@ export default function useHomeState() {
     if (!activeNote) return;
     const timer = setTimeout(() => {
       if (content !== activeNote.content || title !== activeNote.title) {
-        saveNoteApi(activeNote.id, content, token, title, activeNote.folder_id).then(fetchNotes);
+        saveNote(activeNote.id, content, token, title, activeNote.folder_id).then(fetchNotes);
       }
     }, 1000);
     return () => clearTimeout(timer);
