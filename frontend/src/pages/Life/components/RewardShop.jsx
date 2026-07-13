@@ -1,7 +1,42 @@
-import React, { useState } from 'react';
-import { ShoppingBag, Lock, Unlock, Play, Star, Award, Zap } from 'lucide-react';
-import { useToast } from '../../../context/ToastContext';
-import Confetti from 'react-confetti';
+import React, { useState, useEffect } from 'react';
+import { Lock, Unlock, Star, Award, Zap, Clock } from 'lucide-react';
+
+// Simple built-in confetti — no external package needed
+function ConfettiBurst() {
+  const pieces = Array.from({ length: 60 }, (_, i) => ({
+    id: i,
+    left: Math.random() * 100,
+    delay: Math.random() * 1.5,
+    color: ['#f43f5e','#a855f7','#3b82f6','#10b981','#f59e0b','#ec4899'][Math.floor(Math.random() * 6)],
+    size: Math.random() * 8 + 6,
+  }));
+
+  return (
+    <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">
+      {pieces.map(p => (
+        <div
+          key={p.id}
+          style={{
+            position: 'absolute',
+            left: `${p.left}%`,
+            top: '-20px',
+            width: p.size,
+            height: p.size,
+            backgroundColor: p.color,
+            borderRadius: Math.random() > 0.5 ? '50%' : '2px',
+            animation: `confettiFall 2.5s ${p.delay}s ease-in forwards`,
+          }}
+        />
+      ))}
+      <style>{`
+        @keyframes confettiFall {
+          0%   { transform: translateY(0) rotate(0deg); opacity: 1; }
+          100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+        }
+      `}</style>
+    </div>
+  );
+}
 
 export default function RewardShop({ rewards, progress, onUnlock }) {
   const [showConfetti, setShowConfetti] = useState(false);
@@ -12,7 +47,7 @@ export default function RewardShop({ rewards, progress, onUnlock }) {
     try {
       await onUnlock(reward, reward.key_type);
       setShowConfetti(true);
-      setTimeout(() => setShowConfetti(false), 5000);
+      setTimeout(() => setShowConfetti(false), 4000);
     } finally {
       setUnlockingId(null);
     }
@@ -40,8 +75,8 @@ export default function RewardShop({ rewards, progress, onUnlock }) {
 
   return (
     <div className="space-y-4">
-      {showConfetti && <Confetti recycle={false} numberOfPieces={500} gravity={0.15} />}
-      
+      {showConfetti && <ConfettiBurst />}
+
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-lg font-bold">Sporadic Rewards</h2>
       </div>
@@ -52,11 +87,11 @@ export default function RewardShop({ rewards, progress, onUnlock }) {
           const isUnlocking = unlockingId === reward.id;
 
           return (
-            <div 
-              key={reward.id} 
+            <div
+              key={reward.id}
               className={`p-5 rounded-3xl border transition-all duration-300 flex flex-col ${
-                canAfford 
-                  ? 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md hover:scale-[1.02]' 
+                canAfford
+                  ? 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md hover:scale-[1.02]'
                   : 'bg-gray-50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-800 opacity-75 grayscale-[0.5]'
               }`}
             >
@@ -79,29 +114,26 @@ export default function RewardShop({ rewards, progress, onUnlock }) {
                 disabled={!canAfford || isUnlocking}
                 onClick={() => handleBuy(reward)}
                 className={`mt-auto w-full py-3 rounded-2xl flex justify-center items-center gap-2 font-bold transition-all ${
-                  canAfford 
-                    ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-black dark:hover:bg-gray-200 shadow-md' 
+                  canAfford
+                    ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-black dark:hover:bg-gray-200 shadow-md'
                     : 'bg-gray-200 dark:bg-gray-700 text-gray-400 cursor-not-allowed'
                 }`}
               >
                 {isUnlocking ? (
                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-current"></div>
                 ) : canAfford ? (
-                  <>
-                    <Unlock size={18} /> Unlock Session
-                  </>
+                  <><Unlock size={18} /> Unlock Session</>
                 ) : (
-                  <>
-                    <Lock size={18} /> Need Keys
-                  </>
+                  <><Lock size={18} /> Need Keys</>
                 )}
               </button>
             </div>
           );
         })}
+
         {rewards.length === 0 && (
           <div className="col-span-full p-8 text-center border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-3xl">
-            <p className="text-gray-500 dark:text-gray-400 font-medium">No rewards configured yet. Add them in settings.</p>
+            <p className="text-gray-500 dark:text-gray-400 font-medium">No rewards configured yet.</p>
           </div>
         )}
       </div>
