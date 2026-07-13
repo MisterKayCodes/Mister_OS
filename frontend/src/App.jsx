@@ -5,7 +5,6 @@ import FinanceApp from './pages/Finance';
 import LeadsApp from './pages/Leads';
 import KnowledgeApp from './pages/Knowledge';
 import TasksApp from './pages/Tasks';
-import LifeApp from './pages/Life/Life';
 import OmniChat from './components/features/OmniChat';
 import { ToastProvider } from './context/ToastContext';
 import Toast from './components/ui/Toast';
@@ -45,7 +44,6 @@ function AppContent() {
         {currentApp === 'dashboard' && <Dashboard onNavigate={navigate} onLogout={handleLogout} token={token} />}
         {currentApp === 'notes' && <NotesApp onBack={goHome} token={token} />}
         {currentApp === 'finance' && <FinanceApp onBack={goHome} token={token} />}
-        {currentApp === 'life' && <LifeApp onBack={goHome} token={token} />}
         {currentApp === 'warroom' && <LeadsApp onBack={goHome} token={token} />}
         {currentApp === 'knowledge' && <KnowledgeApp onBack={goHome} token={token} />}
         {currentApp === 'tasks' && <TasksApp onBack={goHome} token={token} />}

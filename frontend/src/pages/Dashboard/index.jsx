@@ -49,7 +49,6 @@ export default function Dashboard({ onNavigate, onLogout, token }) {
   const quickLinks = [
     { name: "Notes & Editor", icon: BookOpen, color: "from-blue-500 to-cyan-400", bgLight: "bg-blue-50", textLight: "text-blue-600", onClick: () => onNavigate('notes') },
     { name: "Finance Hub", icon: DollarSign, color: "from-emerald-500 to-teal-400", bgLight: "bg-emerald-50", textLight: "text-emerald-600", onClick: () => onNavigate('finance') },
-    { name: "Life Balance XP", icon: Clock, color: "from-rose-500 to-pink-400", bgLight: "bg-rose-50", textLight: "text-rose-600", onClick: () => onNavigate('life') },
     { name: "War Room (Leads)", icon: Target, color: "from-orange-500 to-amber-400", bgLight: "bg-orange-50", textLight: "text-orange-600", onClick: () => onNavigate('warroom') },
     { name: "Knowledge Base", icon: Sparkles, color: "from-purple-500 to-pink-500", bgLight: "bg-purple-50", textLight: "text-purple-600", onClick: () => onNavigate('knowledge') },
     { name: "Task Center", icon: CheckSquare, color: "from-indigo-500 to-violet-500", bgLight: "bg-indigo-50", textLight: "text-indigo-600", onClick: () => onNavigate('tasks') },
