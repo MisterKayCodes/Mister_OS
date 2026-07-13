@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { Lock, Unlock, Star, Award, Zap, Clock } from 'lucide-react';
+import React, { useState } from 'react';
+import { Lock, Unlock, Star, Award, Zap, Clock, Plus, Settings2 } from 'lucide-react';
+import EditRewardModal from './EditRewardModal';
 
 // Simple built-in confetti — no external package needed
 function ConfettiBurst() {
@@ -38,9 +39,13 @@ function ConfettiBurst() {
   );
 }
 
-export default function RewardShop({ rewards, progress, onUnlock }) {
+export default function RewardShop({ rewards, progress, onUnlock, token, onRewardsChanged }) {
   const [showConfetti, setShowConfetti] = useState(false);
   const [unlockingId, setUnlockingId] = useState(null);
+  
+  // Modal state
+  const [editingReward, setEditingReward] = useState(null);
+  const [showEditModal, setShowEditModal] = useState(false);
 
   const handleBuy = async (reward) => {
     setUnlockingId(reward.id);
@@ -79,6 +84,12 @@ export default function RewardShop({ rewards, progress, onUnlock }) {
 
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-lg font-bold">Sporadic Rewards</h2>
+        <button 
+          onClick={() => { setEditingReward(null); setShowEditModal(true); }}
+          className="flex items-center gap-1 text-sm font-bold text-rose-500 bg-rose-50 dark:bg-rose-500/10 px-3 py-1.5 rounded-lg hover:bg-rose-100 dark:hover:bg-rose-500/20 transition"
+        >
+          <Plus size={16} /> Add Reward
+        </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -89,15 +100,22 @@ export default function RewardShop({ rewards, progress, onUnlock }) {
           return (
             <div
               key={reward.id}
-              className={`p-5 rounded-3xl border transition-all duration-300 flex flex-col ${
+              className={`p-5 rounded-3xl border transition-all duration-300 flex flex-col group ${
                 canAfford
                   ? 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md hover:scale-[1.02]'
                   : 'bg-gray-50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-800 opacity-75 grayscale-[0.5]'
               }`}
             >
-              <div className="flex justify-between items-start mb-4">
-                <h3 className={`font-black text-lg ${canAfford ? 'text-gray-900 dark:text-white' : 'text-gray-500'}`}>
+              <div className="flex justify-between items-start mb-4 relative">
+                <h3 className={`font-black text-lg ${canAfford ? 'text-gray-900 dark:text-white' : 'text-gray-500'} flex items-center gap-2`}>
                   {reward.name}
+                  <button 
+                    onClick={() => { setEditingReward(reward); setShowEditModal(true); }}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                    title="Edit reward"
+                  >
+                    <Settings2 size={14} />
+                  </button>
                 </h3>
                 <div className={`px-2.5 py-1 rounded-xl flex items-center gap-1.5 text-xs font-bold border ${getKeyColorClass(reward.key_type)}`}>
                   {getKeyIcon(reward.key_type)}
@@ -133,10 +151,22 @@ export default function RewardShop({ rewards, progress, onUnlock }) {
 
         {rewards.length === 0 && (
           <div className="col-span-full p-8 text-center border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-3xl">
-            <p className="text-gray-500 dark:text-gray-400 font-medium">No rewards configured yet.</p>
+            <p className="text-gray-500 dark:text-gray-400 font-medium">No rewards configured yet. Click "Add Reward" to create some.</p>
           </div>
         )}
       </div>
+
+      {showEditModal && (
+        <EditRewardModal 
+          reward={editingReward}
+          token={token}
+          onClose={() => setShowEditModal(false)}
+          onSaved={() => {
+            setShowEditModal(false);
+            if (onRewardsChanged) onRewardsChanged();
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -55,6 +55,7 @@ class LifeTaskSessionResponse(BaseResponse):
     xp_earned: float
     is_completed: bool
     date_logged: datetime
+    task_def: Optional[LifeTaskDefResponse] = None
 
 class LifeRewardCreate(BaseModel):
     name: str

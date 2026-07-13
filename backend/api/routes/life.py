@@ -50,6 +50,12 @@ def delete_task_def(def_id: int, db: Session = Depends(database.get_db), token: 
 def log_task_session(req: schemas.LifeTaskSessionCreate, db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
     return LifeService.log_task_session(db, req)
 
+# Added this so we can fetch history and show 'Done xN today' (we don't lock tasks, gym log style!)
+@router.get("/tasks/sessions", response_model=List[schemas.LifeTaskSessionResponse])
+def get_task_sessions(db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
+    # Fetch all sessions, newest first
+    return db.query(models.LifeTaskSession).order_by(models.LifeTaskSession.date_logged.desc()).all()
+
 @router.get("/rewards", response_model=List[schemas.LifeRewardResponse])
 def get_rewards(db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):
     return db.query(models.LifeReward).order_by(models.LifeReward.order_index).all()

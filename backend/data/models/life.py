@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, Float, DateTime, Boolean, ForeignKey
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from data.models.base import Base
 
@@ -33,6 +34,8 @@ class LifeTaskSession(Base):
     xp_earned = Column(Float, default=0.0)
     is_completed = Column(Boolean, default=False)
     date_logged = Column(DateTime(timezone=True), server_default=func.now())
+    
+    task_def = relationship("LifeTaskDef")
 
 class LifeReward(Base):
     __tablename__ = "life_rewards"

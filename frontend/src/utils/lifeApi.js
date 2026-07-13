@@ -53,25 +53,26 @@ export const logLifeTaskSession = async (data, token) => {
   return await res.json();
 };
 
+// REWARDS
 export const getLifeRewards = async (token) => {
   const res = await fetch(`${API_BASE}/life/rewards`, { headers: { "X-Master-Token": token } });
-  if (!res.ok) throw new Error("Failed to fetch rewards");
+  if (!res.ok) throw new Error("Failed to fetch life rewards");
   return await res.json();
 };
 
-export const createLifeReward = async (data, token) => {
+export const createLifeReward = async (rewardData, token) => {
   const res = await fetch(`${API_BASE}/life/rewards`, {
-    method: "POST",
+    method: 'POST',
     headers: { "Content-Type": "application/json", "X-Master-Token": token },
-    body: JSON.stringify(data)
+    body: JSON.stringify(rewardData)
   });
   if (!res.ok) throw new Error("Failed to create reward");
   return await res.json();
 };
 
-export const deleteLifeReward = async (id, token) => {
-  const res = await fetch(`${API_BASE}/life/rewards/${id}`, {
-    method: "DELETE",
+export const deleteLifeReward = async (rewardId, token) => {
+  const res = await fetch(`${API_BASE}/life/rewards/${rewardId}`, {
+    method: 'DELETE',
     headers: { "X-Master-Token": token }
   });
   if (!res.ok) throw new Error("Failed to delete reward");

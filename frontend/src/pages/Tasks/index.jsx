@@ -3,24 +3,26 @@ import { ChevronLeft, Plus, CheckCircle2, Circle, Clock, Trash2, Sun, Moon, Flam
 import { useToast } from '../../context/ToastContext';
 import { useTheme } from '../../context/ThemeContext';
 import { getTasksApi, createTaskApi, updateTaskApi, deleteTaskApi } from '../../utils/api';
-import { getLifeProgress, getLifeTaskDefs, getLifeRewards, logLifeTaskSession, unlockLifeReward } from '../../utils/lifeApi';
+import { getLifeProgress, getLifeTaskDefs, getLifeRewards, logLifeTaskSession, unlockLifeReward, getTaskSessions } from '../../utils/lifeApi';
 import LifeDashboard from '../Life/components/LifeDashboard';
 import TaskBoard from '../Life/components/TaskBoard';
 import RewardShop from '../Life/components/RewardShop';
 import TaskTimerModal from '../Life/components/TaskTimerModal';
 import EditTaskModal from '../Life/components/EditTaskModal';
+import LifeHistory from '../Life/components/LifeHistory';
 
 export default function TasksApp({ token, onBack }) {
   const { showToast } = useToast();
   const { isDarkMode, toggleTheme } = useTheme();
 
-  // Tab state: 'life' = XP Board, 'tasks' = One-off Tasks, 'rewards' = Shop
+  // Tab state: 'life' = XP Board, 'history' = History, 'tasks' = One-off Tasks, 'rewards' = Shop
   const [activeTab, setActiveTab] = useState('life');
 
   // --- Life Board state ---
   const [progress, setProgress] = useState(null);
   const [taskDefs, setTaskDefs] = useState([]);
   const [rewards, setRewards] = useState([]);
+  const [sessions, setSessions] = useState([]);
   const [lifeLoading, setLifeLoading] = useState(true);
   const [activeTimerTask, setActiveTimerTask] = useState(null);
   const [editingLifeTask, setEditingLifeTask] = useState(null);
@@ -37,14 +39,16 @@ export default function TasksApp({ token, onBack }) {
   const fetchLifeData = async () => {
     try {
       setLifeLoading(true);
-      const [prog, tDefs, rews] = await Promise.all([
+      const [prog, tDefs, rews, sess] = await Promise.all([
         getLifeProgress(token),
         getLifeTaskDefs(token),
-        getLifeRewards(token)
+        getLifeRewards(token),
+        getTaskSessions(token)
       ]);
       setProgress(prog);
       setTaskDefs(tDefs);
       setRewards(rews);
+      setSessions(sess);
     } catch (err) {
       showToast('Failed to load Life Board data', 'error');
     } finally {
@@ -81,6 +85,9 @@ export default function TasksApp({ token, onBack }) {
         is_completed: true
       }, token);
       setProgress(updatedProgress);
+      // Fetch latest sessions to update the "Done ×N today" badges
+      const sess = await getTaskSessions(token);
+      setSessions(sess);
       showToast(`+${xpEarned} XP earned!`, 'success');
     } catch (err) {
       showToast(err.message, 'error');
@@ -142,6 +149,7 @@ export default function TasksApp({ token, onBack }) {
 
   const tabs = [
     { id: 'life', label: 'Life Board' },
+    { id: 'history', label: 'History' },
     { id: 'tasks', label: 'One-off' },
     { id: 'rewards', label: 'Rewards' },
   ];
@@ -202,11 +210,21 @@ export default function TasksApp({ token, onBack }) {
                 </div>
                 <TaskBoard
                   taskDefs={taskDefs}
+                  sessions={sessions}
                   onStartTimer={setActiveTimerTask}
                   onEditTask={(task) => { setEditingLifeTask(task); setShowEditModal(true); }}
                   onQuickComplete={(task) => handleTaskComplete(task, 0, task.base_xp)}
                 />
               </>
+            )
+          )}
+
+          {/* === HISTORY TAB === */}
+          {activeTab === 'history' && (
+            lifeLoading ? (
+              <div className="flex justify-center py-20"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-rose-500"></div></div>
+            ) : (
+              <LifeHistory sessions={sessions} taskDefs={taskDefs} />
             )
           )}
 
@@ -294,6 +312,8 @@ export default function TasksApp({ token, onBack }) {
               rewards={rewards}
               progress={progress}
               onUnlock={handleUnlockReward}
+              token={token}
+              onRewardsChanged={fetchLifeData}
             />
           )}
 
