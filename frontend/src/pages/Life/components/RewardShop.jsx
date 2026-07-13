@@ -60,10 +60,16 @@ export default function RewardShop({ rewards, progress, onUnlock, token, onRewar
 
   const getAffordability = (keyType, cost) => {
     if (!progress) return false;
-    if (keyType === 'Platinum') return progress.platinum_keys >= cost;
-    if (keyType === 'Gold') return progress.gold_keys >= cost;
-    if (keyType === 'Silver') return progress.silver_keys >= cost;
-    return false;
+    
+    // [Added so the frontend uses the same "Total Silver" auto-change logic as the backend]
+    const totalSilver = (progress.platinum_keys * 4) + (progress.gold_keys * 2) + progress.silver_keys;
+    
+    let costInSilver = 0;
+    if (keyType === 'Platinum') costInSilver = cost * 4;
+    else if (keyType === 'Gold') costInSilver = cost * 2;
+    else if (keyType === 'Silver') costInSilver = cost;
+    
+    return totalSilver >= costInSilver;
   };
 
   const getKeyIcon = (keyType) => {
