@@ -5,7 +5,7 @@ from data import models, schemas, database
 from api.dependencies import get_master_token
 from services.life_service import LifeService
 
-router = APIRouter()
+router = APIRouter(prefix="/api/life", tags=["Life"])
 
 @router.get("/progress", response_model=schemas.LifeUserProgressResponse)
 def get_progress(db: Session = Depends(database.get_db), token: str = Depends(get_master_token)):

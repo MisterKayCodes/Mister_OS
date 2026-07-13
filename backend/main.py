@@ -33,7 +33,7 @@ app.include_router(hunts.router)
 app.include_router(outreach_engine.router)
 app.include_router(knowledge.router)
 app.include_router(tasks.router)
-app.include_router(life.router, prefix="/life")
+app.include_router(life.router)
 
 @app.get("/")
 def health_check():
